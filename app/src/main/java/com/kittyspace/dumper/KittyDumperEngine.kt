@@ -164,7 +164,7 @@ object KittyDumperEngine {
         onLog("[Dumper] Constructing type structures & disassembling classes...")
 
         // RESOLVE SEQUENTIAL OUTPUT FILE DIRECTLY IN KITTYDUMPER/UNITY FOLDER
-        val baseDir = getKittyDumperOutputDir(outputDir, "Unity", "com.game.package.name")
+        val baseDir = outputDir
         baseDir.mkdirs()
         var count = 0
         var dumpFile = File(baseDir, "${count}dump.cs")
@@ -377,7 +377,7 @@ object KittyDumperEngine {
         ) + candidateStrings.filter { it.length > 3 && it.all { c -> c.isLetterOrDigit() || c == '_' } }.distinct()
 
         // RESOLVE SEQUENTIAL OUTPUT FILE DIRECTLY IN KITTYDUMPER/UNREAL FOLDER AS REQUESTED
-        val baseDir = getKittyDumperOutputDir(outputDir, "Unreal", "com.game.package.name")
+        val baseDir = outputDir
         baseDir.mkdirs()
         var count = 0
         var dumpFile = File(baseDir, "${count}libue4.txt")
