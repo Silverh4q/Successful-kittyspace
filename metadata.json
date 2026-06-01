@@ -1,0 +1,6 @@
+{
+  "name": "Secure Native App",
+  "description": "An application compiled with NDK and SDK, featuring ProGuard protection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
