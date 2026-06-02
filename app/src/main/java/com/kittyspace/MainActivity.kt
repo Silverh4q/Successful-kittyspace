@@ -425,6 +425,8 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
     var selectedSpaceApp by remember { mutableStateOf<KittyAppEntity?>(null) }
     var launchingApp by remember { mutableStateOf<KittyAppEntity?>(null) }
     var showVipDialogForApp by remember { mutableStateOf<KittyAppEntity?>(null) }
+    var showInjectIntroDialog by remember { mutableStateOf(false) }
+    var showVipDialogForInject by remember { mutableStateOf(false) }
     var launchLogs by remember { mutableStateOf("") }
     
     // View state mappings
@@ -685,8 +687,29 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
         ) {
             
             if (activeScreen == Screen.KITTYSPACE) {
-                // REDESIGNED PORTFOLIO HEADER (AS SHOWN IN CAPTURE IMAGE)
-                KittyspyAngledHeader()
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    // REDESIGNED PORTFOLIO HEADER (AS SHOWN IN CAPTURE IMAGE)
+                    KittyspyAngledHeader()
+                    
+                    IconButton(
+                        onClick = {
+                            val prefs = context.getSharedPreferences("KittySettings", Context.MODE_PRIVATE)
+                            if (prefs.getBoolean("vip_unlocked", false)) {
+                                showInjectIntroDialog = true
+                            } else {
+                                showVipDialogForInject = true
+                            }
+                        },
+                        modifier = Modifier.align(Alignment.TopEnd).padding(top = 16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning, // Temporary icon for Inject Space
+                            contentDescription = "Inject Menu Space",
+                            tint = Color(0xFFFFB300),
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
                 
                 Spacer(modifier = Modifier.height(18.dp))
                 
@@ -1513,40 +1536,13 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     
-                    Button(
-                        onClick = {
-                            val prefs = context.getSharedPreferences("KittySettings", Context.MODE_PRIVATE)
-                            if (prefs.getBoolean("vip_unlocked", false)) {
-                                if (Settings.canDrawOverlays(context)) {
-                                    val intent = Intent(context, KittySpyMenuService::class.java)
-                                    intent.putExtra("packageName", pendingChoiceApp?.packageName)
-                                    context.startService(intent)
-                                    launchingApp = pendingChoiceApp
-                                    pendingChoiceApp = null
-                                } else {
-                                    Toast.makeText(context, "Please allow 'Display over other apps'", Toast.LENGTH_LONG).show()
-                                    context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${context.packageName}")))
-                                }
-                            } else {
-                                showVipDialogForApp = pendingChoiceApp
-                                pendingChoiceApp = null
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = BackgroundBlack),
-                        border = BorderStroke(1.dp, Color(0xFFFFB300)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("3. LAUNCH WITH MENU", color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    
                     OutlinedButton(
                         onClick = { pendingChoiceApp = null },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
                         border = BorderStroke(1.dp, BoundaryGray),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("4. ABORT", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        Text("3. ABORT", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     }
                 }
             }
@@ -1891,6 +1887,187 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("CANCEL", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+
+    if (showVipDialogForInject) {
+        Dialog(onDismissRequest = { showVipDialogForInject = false }) {
+            var vipKeyInput by remember { mutableStateOf("") }
+            var isError by remember { mutableStateOf(false) }
+            val context = LocalContext.current
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF04060C)),
+                border = BorderStroke(1.dp, Color(0xFFFFB300)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(imageVector = Icons.Default.Lock, contentDescription = "VIP", tint = Color(0xFFFFB300), modifier = Modifier.size(48.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("VIP ACCESS REQUIRED", color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Please enter your VIP Injector key to access Native Mod Menu extraction.", color = Color.Gray, fontSize = 12.sp, textAlign = TextAlign.Center)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    val primaryDark = Color(0xFF1E1E1E)
+                    OutlinedTextField(
+                        value = vipKeyInput,
+                        onValueChange = { vipKeyInput = it; isError = false },
+                        label = { Text("VIP Key") },
+                        isError = isError,
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFFFB300),
+                            unfocusedBorderColor = Color.DarkGray,
+                            errorBorderColor = AccentPink
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    
+                    if (isError) {
+                        Text("Invalid Key. Validation failed.", color = AccentPink, fontSize = 10.sp, modifier = Modifier.align(Alignment.Start).padding(top = 4.dp))
+                    }
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = {
+                            if (vipKeyInput == "123456" || vipKeyInput == "kittyspyvip") {
+                                val prefs = context.getSharedPreferences("KittySettings", Context.MODE_PRIVATE)
+                                prefs.edit().putBoolean("vip_unlocked", true).apply()
+                                showVipDialogForInject = false
+                                showInjectIntroDialog = true
+                            } else {
+                                isError = true
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = BackgroundBlack),
+                        border = BorderStroke(1.dp, Color(0xFFFFB300)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("VERIFY", color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedButton(
+                        onClick = { showVipDialogForInject = false },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
+                        border = BorderStroke(1.dp, BoundaryGray),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("CANCEL", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+
+    if (showInjectIntroDialog) {
+        Dialog(onDismissRequest = {}) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.9f)
+                    .padding(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF04060C)),
+                border = BorderStroke(1.dp, Color(0xFF00E676)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+                    Text("HOW TO INJECT KITTYSPY MOD MENU", color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Box wrapper for scrollable content so we can leave room for the button
+                    Box(modifier = Modifier.weight(1f)) {
+                        androidx.compose.foundation.lazy.LazyColumn {
+                            item {
+                                Text("This tutorial illustrates how to integrate the KittySpy Native Mod Menu into your target APk.", color = Color.LightGray, fontSize = 12.sp, lineHeight = 18.sp)
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                Text("STEP 1: DECOMPILE TARGET APK", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("Use MT Manager to locate your APK. Decompile it or extract the files to a safe directory.", color = Color.Gray, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Text("STEP 2: ADD NATIVE LIBRARY", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("Extract 'libkittyspymenu.so' from this injector app. Place it inside the 'lib/armeabi-v7a' or 'lib/arm64-v8a' directory of your target APK based on its architecture.", color = Color.Gray, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Text("STEP 3: ADD DEX CLASSES", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("Extract 'kittyspy.dex' from this app. Rename it to match the next sequential classes file (e.g., 'classes2.dex', 'classes3.dex') in your target APK and add it to the root of the decompiled APK.", color = Color.Gray, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Text("STEP 4: INJECT SERVICE IN MAINACTIVITY", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("Identify the MainActivity of your game. Open it using MT Manager's Dex Editor and locate the 'onCreate' method. Paste the smali code to invoke this Java function:", color = Color.Gray, fontSize = 12.sp)
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Box(modifier = Modifier.background(Color(0xFF151515)).border(1.dp, Color(0xFF00E676)).padding(8.dp).fillMaxWidth()) {
+                                    Text("com.kittyspace.ui.KittySpyMenuService.start(this);", color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    var showGameSelectDialog by remember { mutableStateOf(false) }
+                    
+                    Button(
+                        onClick = { showGameSelectDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = BackgroundBlack),
+                        border = BorderStroke(1.dp, Color(0xFF00BFFF)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("KNOW YOUR GAME'S MAINACTIVITY", color = Color(0xFF00BFFF), fontFamily = FontFamily.Monospace, fontSize = 11.sp, textAlign = TextAlign.Center)
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    OutlinedButton(
+                        onClick = { showInjectIntroDialog = false },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
+                        border = BorderStroke(1.dp, BoundaryGray),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("CLOSE", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                    }
+
+                    if (showGameSelectDialog) {
+                        // Game selection popup
+                        Dialog(onDismissRequest = { showGameSelectDialog = false }) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().height(400.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF04060C)),
+                                border = BorderStroke(1.dp, Color(0xFF00BFFF))
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text("Select App", color = Color.White, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.weight(1f)) {
+                                        items(installedApps) { appItem ->
+                                            Row(modifier = Modifier.fillMaxWidth().clickable {
+                                                // Just show Toast with MainActivity
+                                                val intent = context.packageManager.getLaunchIntentForPackage(appItem.packageName)
+                                                val mainAct = intent?.component?.className ?: "Unknown MainActivity"
+                                                
+                                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("MainActivity", mainAct))
+                                                Toast.makeText(context, "Copied: $mainAct", Toast.LENGTH_LONG).show()
+                                                showGameSelectDialog = false
+                                            }.padding(vertical = 12.dp)) {
+                                                Text(appItem.appName, color = Color.White, fontSize = 14.sp)
+                                            }
+                                        }
+                                    }
+                                    Button(onClick = { showGameSelectDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)) {
+                                        Text("CANCEL")
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

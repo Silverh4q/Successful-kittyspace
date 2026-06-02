@@ -34,6 +34,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
@@ -59,6 +60,14 @@ import kotlin.math.roundToInt
 import android.widget.Toast
 
 class KittySpyMenuService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
+
+    companion object {
+        @JvmStatic
+        fun start(context: Context) {
+            val intent = Intent(context, KittySpyMenuService::class.java)
+            context.startService(intent)
+        }
+    }
 
     private lateinit var windowManager: WindowManager
     private lateinit var composeView: ComposeView
@@ -160,6 +169,12 @@ class KittySpyMenuService : Service(), LifecycleOwner, ViewModelStoreOwner, Save
 fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, onFocusChange: (Boolean) -> Unit, packageName: String) {
     var isMinimized by remember { mutableStateOf(false) }
     var currentTab by remember { mutableStateOf("KittySpy") }
+    
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = context.getSharedPreferences("KittySettings", android.content.Context.MODE_PRIVATE)
+    var isVipUnlocked by remember { mutableStateOf(prefs.getBoolean("vip_unlocked", false)) }
+    var vipKeyInput by remember { mutableStateOf("") }
+    var isError by remember { mutableStateOf(false) }
 
     LaunchedEffect(isMinimized) {
         if (isMinimized) onFocusChange(false)
@@ -170,45 +185,48 @@ fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, onFocusC
     val SurfaceDark = Color(0xFF151515)
     val TextLight = Color(0xFFE0E0E0)
     
-    if (isMinimized) {
-        // Floating icon - Hexagon or sharp square
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(Color.Black, shape = RoundedCornerShape(4.dp))
-                .border(2.dp, PrimaryAccent, RoundedCornerShape(4.dp))
-                .pointerInput(Unit) {
-                    detectDragGestures { change, dragAmount ->
-                        change.consume()
-                        onDrag(dragAmount.x, dragAmount.y)
-                    }
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "KS",
-                color = PrimaryAccent,
-                fontWeight = FontWeight.Black,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 20.sp
-            )
-            // Click to maximize
-            Button(
-                onClick = { isMinimized = false },
-                modifier = Modifier.fillMaxSize(),
-                shape = RoundedCornerShape(0.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
-            ) {}
+    Box {
+        if (isMinimized) {
+            // Floating icon - Hexagon or sharp square
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color.Black, shape = RoundedCornerShape(4.dp))
+                    .border(2.dp, PrimaryAccent, RoundedCornerShape(4.dp))
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            onDrag(dragAmount.x, dragAmount.y)
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "KS",
+                    color = PrimaryAccent,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 20.sp
+                )
+                // Click to maximize
+                Button(
+                    onClick = { isMinimized = false },
+                    modifier = Modifier.fillMaxSize(),
+                    shape = RoundedCornerShape(0.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+                ) {}
+            }
         }
-    } else {
-        // Full menu
-        Column(
-            modifier = Modifier
-                .width(340.dp)
-                .heightIn(max = 420.dp)
-                .background(DarkBg, shape = RoundedCornerShape(4.dp))
-                .border(1.dp, PrimaryAccent, RoundedCornerShape(4.dp))
-        ) {
+        
+        Box(modifier = if (isMinimized) Modifier.size(0.dp).clipToBounds() else Modifier) {
+            // Full menu
+            Column(
+                modifier = Modifier
+                    .width(400.dp)
+                    .heightIn(max = 500.dp)
+                    .background(DarkBg, shape = RoundedCornerShape(4.dp))
+                    .border(1.dp, PrimaryAccent, RoundedCornerShape(4.dp))
+            ) {
             // Header
             Row(
                 modifier = Modifier
@@ -241,23 +259,71 @@ fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, onFocusC
                 }
             }
             
-            // Tabs
-            Row(
-                modifier = Modifier.fillMaxWidth().background(SurfaceDark).border(1.dp, PrimaryAccent.copy(alpha = 0.3f))
-            ) {
-                TabItem(title = "DUMPER", isSelected = currentTab == "KittySpy") { currentTab = "KittySpy" }
-                TabItem(title = "PATCHER", isSelected = currentTab == "Patcher") { currentTab = "Patcher" }
-                TabItem(title = "SCAN / HOOK", isSelected = currentTab == "Hooks") { currentTab = "Hooks" }
-            }
-            
-            // Content
-            Box(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-                when (currentTab) {
-                    "KittySpy" -> KittySpyTab(packageName)
-                    "Patcher" -> MemoryPatchTab(onFocusChange)
-                    "Hooks" -> FieldHookTab(onFocusChange)
+            if (!isVipUnlocked) {
+                // VIP Login Screen inside Mod Menu
+                Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    Text("VIP ACCESS REQUIRED", color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Enter VIP key to inject hooks into memory.", color = Color.Gray, fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    OutlinedTextField(
+                        value = vipKeyInput,
+                        onValueChange = { vipKeyInput = it; isError = false },
+                        label = { Text("VIP Key") },
+                        isError = isError,
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFFFB300),
+                            unfocusedBorderColor = Color.DarkGray,
+                            errorBorderColor = Color.Red
+                        ),
+                        modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange(it.isFocused) },
+                        singleLine = true
+                    )
+                    
+                    if (isError) {
+                        Text("Invalid Key.", color = Color.Red, fontSize = 10.sp, modifier = Modifier.align(Alignment.Start).padding(top = 4.dp))
+                    }
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = {
+                            if (vipKeyInput == "123456" || vipKeyInput == "kittyspyvip") {
+                                prefs.edit().putBoolean("vip_unlocked", true).apply()
+                                isVipUnlocked = true
+                            } else {
+                                isError = true
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        border = BorderStroke(1.dp, Color(0xFFFFB300)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("VERIFY VIP", color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                    }
+                }
+            } else {
+                // Main unlocked UI (Tabs)
+                Row(
+                    modifier = Modifier.fillMaxWidth().background(SurfaceDark).border(1.dp, PrimaryAccent.copy(alpha = 0.3f))
+                ) {
+                    TabItem(title = "KITTYSPY", isSelected = currentTab == "KittySpy") { currentTab = "KittySpy" }
+                    TabItem(title = "PATCHER", isSelected = currentTab == "Patcher") { currentTab = "Patcher" }
+                    TabItem(title = "SCAN / HOOK", isSelected = currentTab == "Hooks") { currentTab = "Hooks" }
+                }
+                
+                // Content
+                Box(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+                    when (currentTab) {
+                        "KittySpy" -> KittySpyTab(packageName)
+                        "Patcher" -> MemoryPatchTab(onFocusChange)
+                        "Hooks" -> FieldHookTab(onFocusChange)
+                    }
                 }
             }
+        }
         }
     }
 }
