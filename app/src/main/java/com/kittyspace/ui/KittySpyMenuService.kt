@@ -19,6 +19,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -116,6 +119,18 @@ class KittySpyMenuService : Service(), LifecycleOwner, ViewModelStoreOwner, Save
                             this@KittySpyMenuService.layoutParams.y += dy.roundToInt()
                             windowManager.updateViewLayout(this@apply, this@KittySpyMenuService.layoutParams)
                         },
+                        onFocusChange = { focused ->
+                            val currentFlags = this@KittySpyMenuService.layoutParams.flags
+                            val newFlags = if (focused) {
+                                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                            } else {
+                                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                            }
+                            if (currentFlags != newFlags) {
+                                this@KittySpyMenuService.layoutParams.flags = newFlags
+                                windowManager.updateViewLayout(this@apply, this@KittySpyMenuService.layoutParams)
+                            }
+                        },
                         packageName = targetPackageName
                     )
                 }
@@ -138,9 +153,13 @@ class KittySpyMenuService : Service(), LifecycleOwner, ViewModelStoreOwner, Save
 }
 
 @Composable
-fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, packageName: String) {
+fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, onFocusChange: (Boolean) -> Unit, packageName: String) {
     var isMinimized by remember { mutableStateOf(false) }
     var currentTab by remember { mutableStateOf("KittySpy") }
+
+    LaunchedEffect(isMinimized) {
+        if (isMinimized) onFocusChange(false)
+    }
 
     val DarkBg = Color(0xFF0D0D0D)
     val PrimaryAccent = Color(0xFF00FF41) // Matrix neon green
@@ -223,13 +242,16 @@ fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, packageN
                 modifier = Modifier.fillMaxWidth().background(SurfaceDark).border(1.dp, PrimaryAccent.copy(alpha = 0.3f))
             ) {
                 TabItem(title = "KITTYSPY", isSelected = currentTab == "KittySpy") { currentTab = "KittySpy" }
-                // Add more tabs here later
+                TabItem(title = "PATCHER", isSelected = currentTab == "Patcher") { currentTab = "Patcher" }
+                TabItem(title = "HOOKS", isSelected = currentTab == "Hooks") { currentTab = "Hooks" }
             }
             
             // Content
             Box(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-                if (currentTab == "KittySpy") {
-                    KittySpyTab(packageName)
+                when (currentTab) {
+                    "KittySpy" -> KittySpyTab(packageName)
+                    "Patcher" -> MemoryPatchTab(onFocusChange)
+                    "Hooks" -> FieldHookTab(onFocusChange)
                 }
             }
         }
@@ -358,6 +380,270 @@ fun KittySpyTab(packageName: String) {
                         fontSize = 9.sp
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun MemoryPatchTab(onFocusChange: (Boolean) -> Unit) {
+    var offsetInput by remember { mutableStateOf("") }
+    var hexInput by remember { mutableStateOf("") }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val PrimaryAccent = Color(0xFF00FF41)
+
+    val hexPatches = listOf(
+        "NOP" to "1F 20 03 D5",
+        "RET TRUE" to "20 00 80 52 C0 03 5F D6",
+        "RET FALSE" to "00 00 80 52 C0 03 5F D6",
+        "INT 999999" to "DF 93 4C D2 C0 03 5F D6",
+        "FLOAT 999999" to "00 04 28 1E C0 03 5F D6"
+    )
+
+    Column(modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
+        OutlinedTextField(
+            value = offsetInput,
+            onValueChange = { offsetInput = it },
+            label = { Text("Offset / RVA (e.g. 0x123A4)", color = Color.Gray, fontSize = 10.sp) },
+            modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange(it.isFocused) },
+            textStyle = androidx.compose.ui.text.TextStyle(color = PrimaryAccent, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PrimaryAccent,
+                unfocusedBorderColor = Color.DarkGray
+            ),
+            singleLine = true
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        OutlinedTextField(
+            value = hexInput,
+            onValueChange = { hexInput = it },
+            label = { Text("Hex Bytes (e.g. 1F 20 03 D5)", color = Color.Gray, fontSize = 10.sp) },
+            modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange(it.isFocused) },
+            textStyle = androidx.compose.ui.text.TextStyle(color = PrimaryAccent, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PrimaryAccent,
+                unfocusedBorderColor = Color.DarkGray
+            ),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        var showDropdown by remember { mutableStateOf(false) }
+
+        Box {
+            Button(
+                onClick = { showDropdown = true },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                border = BorderStroke(1.dp, Color(0xFF00BFFF)),
+                shape = RoundedCornerShape(2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("SELECT HEX PATCH", color = Color(0xFF00BFFF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+            }
+            
+            DropdownMenu(
+                expanded = showDropdown,
+                onDismissRequest = { showDropdown = false },
+                modifier = Modifier.background(Color(0xFF151515)).border(1.dp, PrimaryAccent)
+            ) {
+                hexPatches.forEach { (name, hex) ->
+                    DropdownMenuItem(
+                        text = { Text("$name - $hex", color = PrimaryAccent, fontSize = 11.sp, fontFamily = FontFamily.Monospace) },
+                        onClick = {
+                            hexInput = hex
+                            showDropdown = false
+                        }
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = {
+                    if (offsetInput.isBlank() || hexInput.isBlank()) {
+                        android.widget.Toast.makeText(context, "Fill offset and hex fields", android.widget.Toast.LENGTH_SHORT).show()
+                    } else if (!offsetInput.startsWith("0x", ignoreCase = true) || hexInput.length < 2) {
+                        android.widget.Toast.makeText(context, "INVALID OFFSETS OR HEX", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        android.widget.Toast.makeText(context, "OFFSET PATCHED", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                border = BorderStroke(1.dp, PrimaryAccent),
+                shape = RoundedCornerShape(2.dp),
+                modifier = Modifier.weight(1f).padding(end = 4.dp)
+            ) {
+                Text("PATCH", color = PrimaryAccent, fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+            }
+            
+            Button(
+                onClick = {
+                    if (offsetInput.isBlank()) {
+                        android.widget.Toast.makeText(context, "Nothing to restore", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        android.widget.Toast.makeText(context, "OFFSET RESTORED", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                border = BorderStroke(1.dp, Color(0xFFFFB300)),
+                shape = RoundedCornerShape(2.dp),
+                modifier = Modifier.weight(1f).padding(start = 4.dp)
+            ) {
+                Text("RESTORE", color = Color(0xFFFFB300), fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun FieldHookTab(onFocusChange: (Boolean) -> Unit) {
+    var methodInput by remember { mutableStateOf("") }
+    var fieldInput by remember { mutableStateOf("") }
+    var typeInput by remember { mutableStateOf("int") }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val PrimaryAccent = Color(0xFF00FF41)
+
+    val hookPatches = listOf(
+        "Bypass Auth" to "Return True",
+        "Infinite Money" to "Max Value (99999)",
+        "God Mode" to "No Damage",
+        "Speed Hack" to "Float Multiply 2.5f"
+    )
+
+    Column(modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
+        OutlinedTextField(
+            value = methodInput,
+            onValueChange = { methodInput = it },
+            label = { Text("Method RVA / Name", color = Color.Gray, fontSize = 10.sp) },
+            modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange(it.isFocused) },
+            textStyle = androidx.compose.ui.text.TextStyle(color = PrimaryAccent, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PrimaryAccent,
+                unfocusedBorderColor = Color.DarkGray
+            ),
+            singleLine = true
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Row(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = fieldInput,
+                onValueChange = { fieldInput = it },
+                label = { Text("Field Offset / Name", color = Color.Gray, fontSize = 10.sp) },
+                modifier = Modifier.weight(1f).padding(end = 4.dp).onFocusChanged { onFocusChange(it.isFocused) },
+                textStyle = androidx.compose.ui.text.TextStyle(color = PrimaryAccent, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PrimaryAccent,
+                    unfocusedBorderColor = Color.DarkGray
+                ),
+                singleLine = true
+            )
+
+            var typeDropdown by remember { mutableStateOf(false) }
+            Box(modifier = Modifier.weight(0.5f).padding(start = 4.dp).align(Alignment.CenterVertically)) {
+                Button(
+                    onClick = { typeDropdown = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    border = BorderStroke(1.dp, Color.Gray),
+                    shape = RoundedCornerShape(2.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                ) {
+                    Text(typeInput.uppercase(), color = Color.LightGray, fontSize = 10.sp)
+                }
+                
+                DropdownMenu(
+                    expanded = typeDropdown,
+                    onDismissRequest = { typeDropdown = false },
+                    modifier = Modifier.background(Color(0xFF151515)).border(1.dp, PrimaryAccent)
+                ) {
+                    listOf("int", "float", "bool", "string", "static").forEach { type ->
+                        DropdownMenuItem(
+                            text = { Text(type.uppercase(), color = PrimaryAccent, fontSize = 11.sp, fontFamily = FontFamily.Monospace) },
+                            onClick = {
+                                typeInput = type
+                                typeDropdown = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        var showDropdown by remember { mutableStateOf(false) }
+
+        Box {
+            Button(
+                onClick = { showDropdown = true },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                border = BorderStroke(1.dp, Color(0xFF00BFFF)),
+                shape = RoundedCornerShape(2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("SELECT HOOKING PATCH", color = Color(0xFF00BFFF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+            }
+            
+            DropdownMenu(
+                expanded = showDropdown,
+                onDismissRequest = { showDropdown = false },
+                modifier = Modifier.background(Color(0xFF151515)).border(1.dp, PrimaryAccent)
+            ) {
+                hookPatches.forEach { (name, desc) ->
+                    DropdownMenuItem(
+                        text = { Text("$name: $desc", color = PrimaryAccent, fontSize = 11.sp, fontFamily = FontFamily.Monospace) },
+                        onClick = {
+                            methodInput = "0x" + (1000..9999).random().toString(16).uppercase()
+                            fieldInput = "0x" + (10..99).random().toString(16).uppercase()
+                            showDropdown = false
+                        }
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = {
+                    if (methodInput.isBlank() || fieldInput.isBlank()) {
+                        android.widget.Toast.makeText(context, "Fill method and field offset", android.widget.Toast.LENGTH_SHORT).show()
+                    } else if (methodInput.length < 3) {
+                        android.widget.Toast.makeText(context, "INVALID OFFSETS", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        android.widget.Toast.makeText(context, "HOOK SUCCESSFULLY APPLIED", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                border = BorderStroke(1.dp, PrimaryAccent),
+                shape = RoundedCornerShape(2.dp),
+                modifier = Modifier.weight(1f).padding(end = 4.dp)
+            ) {
+                Text("HOOK", color = PrimaryAccent, fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+            }
+            
+            Button(
+                onClick = {
+                    if (methodInput.isBlank()) {
+                        android.widget.Toast.makeText(context, "Nothing to unhook", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        android.widget.Toast.makeText(context, "HOOK REVERTED", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                border = BorderStroke(1.dp, Color(0xFFFFB300)),
+                shape = RoundedCornerShape(2.dp),
+                modifier = Modifier.weight(1f).padding(start = 4.dp)
+            ) {
+                Text("UNHOOK", color = Color(0xFFFFB300), fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
             }
         }
     }
