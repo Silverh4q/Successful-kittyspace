@@ -2007,21 +2007,21 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text("STEP 3: ADD DEX CLASSES", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text("Extract 'classes.dex' from this app's root. Rename it to match the next sequential classes file (e.g., 'classes2.dex', 'classes3.dex') in your target APK and add it to the root of the decompiled APK.", color = Color.Gray, fontSize = 12.sp)
+                                Text("Extract 'classes4.dex' from this app's root. Rename it to match the next sequential classes file (e.g., 'classes2.dex', 'classes3.dex') in your target APK and add it to the root of the decompiled APK.", color = Color.Gray, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text("STEP 4: INJECT SERVICE IN MAINACTIVITY", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text("Identify the MainActivity of your game. Open it using MT Manager's Dex Editor and locate the 'onCreate' method. Paste the smali code to invoke this Java function:", color = Color.Gray, fontSize = 12.sp)
+                                Text("Identify the MainActivity of your game. Open it using MT Manager's Dex Editor and locate the 'onCreate' method. Paste the smali code below:", color = Color.Gray, fontSize = 12.sp)
                                 
                                 Spacer(modifier = Modifier.height(8.dp))
                                 var isCopiedSnippet by remember { mutableStateOf(false) }
                                 
                                 Box(modifier = Modifier.background(Color(0xFF151515)).border(1.dp, Color(0xFF00E676)).padding(8.dp).fillMaxWidth()) {
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                        Text("com.kittyspace.ui.KittySpyMenuService.start(this);", color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                                        Text("invoke-static {p0}, Lcom/kittyspace/ui/KittySpyMenuService;->start(Landroid/content/Context;)V", color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
                                         IconButton(onClick = {
                                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("code", "com.kittyspace.ui.KittySpyMenuService.start(this);"))
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("code", "invoke-static {p0}, Lcom/kittyspace/ui/KittySpyMenuService;->start(Landroid/content/Context;)V"))
                                             isCopiedSnippet = true
                                         }, modifier = Modifier.size(24.dp)) {
                                             Icon(
