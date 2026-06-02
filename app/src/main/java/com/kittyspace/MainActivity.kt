@@ -11,7 +11,9 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
+import com.kittyspace.ui.KittySpyMenuService
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -422,6 +424,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
     var showAddAppDialog by remember { mutableStateOf(false) }
     var selectedSpaceApp by remember { mutableStateOf<KittyAppEntity?>(null) }
     var launchingApp by remember { mutableStateOf<KittyAppEntity?>(null) }
+    var showVipDialogForApp by remember { mutableStateOf<KittyAppEntity?>(null) }
     var launchLogs by remember { mutableStateOf("") }
     
     // View state mappings
@@ -1516,13 +1519,39 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     
+                    Button(
+                        onClick = {
+                            val prefs = context.getSharedPreferences("KittySettings", Context.MODE_PRIVATE)
+                            if (prefs.getBoolean("vip_unlocked", false)) {
+                                if (Settings.canDrawOverlays(context)) {
+                                    val intent = Intent(context, KittySpyMenuService::class.java)
+                                    intent.putExtra("packageName", pendingChoiceApp?.packageName)
+                                    context.startService(intent)
+                                    pendingChoiceApp = null
+                                } else {
+                                    Toast.makeText(context, "Please allow 'Display over other apps'", Toast.LENGTH_LONG).show()
+                                    context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${context.packageName}")))
+                                }
+                            } else {
+                                showVipDialogForApp = pendingChoiceApp
+                                pendingChoiceApp = null
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = BackgroundBlack),
+                        border = BorderStroke(1.dp, Color(0xFFFFB300)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("3. LAUNCH WITH MENU", color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    
                     OutlinedButton(
                         onClick = { pendingChoiceApp = null },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
                         border = BorderStroke(1.dp, BoundaryGray),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("3. ABORT", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        Text("4. ABORT", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     }
                 }
             }
@@ -1756,6 +1785,116 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         ) {
                             Text("ABORT", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showVipDialogForApp != null) {
+        Dialog(onDismissRequest = { showVipDialogForApp = null }) {
+            var vipKeyInput by remember { mutableStateOf("") }
+            var isError by remember { mutableStateOf(false) }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF04060C)),
+                border = BorderStroke(1.dp, if (isError) Color.Red else Color(0xFFFFB300)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "VIP ACCESS REQUIRED",
+                        color = Color(0xFFFFB300),
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Enter your VIP token to unlock the floating mod menu injection.",
+                        color = TextLight,
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    OutlinedTextField(
+                        value = vipKeyInput,
+                        onValueChange = { 
+                            vipKeyInput = it
+                            isError = false
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = BackgroundBlack,
+                            unfocusedContainerColor = BackgroundBlack,
+                            focusedBorderColor = Color(0xFFFFB300),
+                            unfocusedBorderColor = BoundaryGray,
+                            cursorColor = Color(0xFFFFB300),
+                            focusedTextColor = Color(0xFFFFB300),
+                            unfocusedTextColor = TextLight
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("Enter VIP Key", color = TextMuted) },
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
+                    )
+
+                    if (isError) {
+                        Text(
+                            text = "Invalid VIP Key",
+                            color = Color.Red,
+                            fontSize = 10.sp,
+                            modifier = Modifier
+                                .align(Alignment.Start)
+                                .padding(top = 4.dp, start = 8.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = {
+                            if (vipKeyInput == "L0RDSILVER777-GPM") {
+                                val prefs = context.getSharedPreferences("KittySettings", Context.MODE_PRIVATE)
+                                prefs.edit().putBoolean("vip_unlocked", true).apply()
+                                
+                                val appToLaunch = showVipDialogForApp
+                                showVipDialogForApp = null
+                                
+                                if (Settings.canDrawOverlays(context)) {
+                                    val intent = Intent(context, KittySpyMenuService::class.java)
+                                    intent.putExtra("packageName", appToLaunch?.packageName)
+                                    context.startService(intent)
+                                } else {
+                                    Toast.makeText(context, "Please allow 'Display over other apps'", Toast.LENGTH_LONG).show()
+                                    context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${context.packageName}")))
+                                }
+                            } else {
+                                isError = true
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = BackgroundBlack),
+                        border = BorderStroke(1.dp, Color(0xFFFFB300)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("VERIFY", color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                    }
+                    
+                    Spacer(modifier = Modifier.height(10.dp))
+                    
+                    OutlinedButton(
+                        onClick = { showVipDialogForApp = null },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
+                        border = BorderStroke(1.dp, BoundaryGray),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("CANCEL", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     }
                 }
             }
