@@ -2040,6 +2040,38 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
+
+                                Text("STEP 5: UPDATE MANIFEST", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("Open AndroidManifest.xml in MT Manager using XML Editor. Add the 'SYSTEM_ALERT_WINDOW' permission, and declare the service inside <application>.", color = Color.Gray, fontSize = 12.sp)
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                var isCopiedManifest by remember { mutableStateOf(false) }
+                                
+                                Box(modifier = Modifier.background(Color(0xFF151515)).border(1.dp, Color(0xFF00E676)).padding(8.dp).fillMaxWidth()) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                        val manifestCode = "<uses-permission android:name=\"android.permission.SYSTEM_ALERT_WINDOW\" />\n<service android:name=\"com.kittyspace.ui.KittySpyMenuService\" android:exported=\"false\" />"
+                                        Text(manifestCode, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                                        IconButton(onClick = {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("manifest_code", manifestCode))
+                                            isCopiedManifest = true
+                                        }, modifier = Modifier.size(24.dp)) {
+                                            Icon(
+                                                imageVector = if (isCopiedManifest) Icons.Default.Check else Icons.Default.Add,
+                                                contentDescription = "Copy Manifest",
+                                                tint = Color(0xFF00E676),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                        LaunchedEffect(isCopiedManifest) {
+                                            if (isCopiedManifest) {
+                                                kotlinx.coroutines.delay(2000)
+                                                isCopiedManifest = false
+                                            }
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
                             }
                         }
                     }

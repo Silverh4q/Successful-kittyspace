@@ -66,8 +66,15 @@ class KittySpyMenuService : Service(), LifecycleOwner, ViewModelStoreOwner, Save
         fun start(context: Context) {
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 try {
-                    val intent = Intent(context, KittySpyMenuService::class.java)
-                    context.startService(intent)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(context)) {
+                        val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${context.packageName}"))
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                        Toast.makeText(context, "Please allow 'Display over other apps' to use the Mod Menu.", Toast.LENGTH_LONG).show()
+                    } else {
+                        val intent = Intent(context, KittySpyMenuService::class.java)
+                        context.startService(intent)
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
