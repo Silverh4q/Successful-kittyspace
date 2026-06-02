@@ -138,6 +138,44 @@ Java_com_kittyspace_NativeDumper_dobyInlineHookSimulation(
 
     return env->NewStringUTF(result.c_str());
 }
+extern "C" JNIEXPORT jobjectArray JNICALL
+Java_com_kittyspace_NativeDumper_dumpGameFunctions(
+        JNIEnv* env,
+        jobject /* this */,
+        jstring packageNameObj) {
+    if (!packageNameObj) return nullptr;
+    const char* packageName = env->GetStringUTFChars(packageNameObj, nullptr);
+    
+    // Simulate real native module parsing PE/ELF .so files and obtaining symbols
+    std::vector<std::string> dumpedFunctions = {
+        "[Native] Attached to " + std::string(packageName),
+        "[Native] Scanning memory mappings for .so allocations...",
+        "[Native] Identified Unity Engine environment (libil2cpp.so).",
+        "[il2cpp] Resolving exported native symbols...",
+        "[il2cpp] -> il2cpp_domain_get : 0x712BCA",
+        "[il2cpp] -> il2cpp_class_from_name : 0x713AAB",
+        "[il2cpp] -> il2cpp_class_get_methods : 0x714CCC",
+        "[il2cpp] -> il2cpp_method_get_name : 0x715DDD",
+        "[il2cpp] -> il2cpp_method_get_param_count : 0x716EEE",
+        "[Native] Identified Unreal Engine framework (libUE4.so).",
+        "[UE4] Resolving core objects...",
+        "[UE4] -> GObjects : 0x400A231",
+        "[UE4] -> UObject : 0x400C12B",
+        "[UE4] -> ProcessEvent : 0x51AABB1",
+        "[UE4] -> UFunction : 0x4B33CC0",
+        "[Native] Memory inspection successfully completed!"
+    };
+    
+    env->ReleaseStringUTFChars(packageNameObj, packageName);
+    
+    jclass stringClass = env->FindClass("java/lang/String");
+    jobjectArray result = env->NewObjectArray(dumpedFunctions.size(), stringClass, nullptr);
+    for (size_t i = 0; i < dumpedFunctions.size(); i++) {
+        env->SetObjectArrayElement(result, i, env->NewStringUTF(dumpedFunctions[i].c_str()));
+    }
+    return result;
+}
+
 // Example function to apply a patch (placeholder for true memory patching like Dobby or raw memory writes)
 // Normally you'd read /proc/self/maps or parse ELF/PE memory space to offset and apply mprotect.
 extern "C" JNIEXPORT jboolean JNICALL

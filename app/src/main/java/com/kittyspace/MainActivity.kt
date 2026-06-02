@@ -1527,6 +1527,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                     val intent = Intent(context, KittySpyMenuService::class.java)
                                     intent.putExtra("packageName", pendingChoiceApp?.packageName)
                                     context.startService(intent)
+                                    launchingApp = pendingChoiceApp
                                     pendingChoiceApp = null
                                 } else {
                                     Toast.makeText(context, "Please allow 'Display over other apps'", Toast.LENGTH_LONG).show()
@@ -1871,6 +1872,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                     val intent = Intent(context, KittySpyMenuService::class.java)
                                     intent.putExtra("packageName", appToLaunch?.packageName)
                                     context.startService(intent)
+                                    launchingApp = appToLaunch
                                 } else {
                                     Toast.makeText(context, "Please allow 'Display over other apps'", Toast.LENGTH_LONG).show()
                                     context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${context.packageName}")))

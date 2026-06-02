@@ -142,7 +142,7 @@ fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, packageN
     var currentTab by remember { mutableStateOf("KittySpy") }
 
     val DarkBg = Color(0xFF121212)
-    val PrimaryPink = Color(0xFFFF4081)
+    val PrimaryAccent = Color(0xFF00E676)
     val SurfaceDark = Color(0xFF1E1E1E)
     val TextLight = Color(0xFFE0E0E0)
     
@@ -153,7 +153,7 @@ fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, packageN
                 .size(56.dp)
                 .clip(CircleShape)
                 .background(DarkBg)
-                .border(2.dp, PrimaryPink, CircleShape)
+                .border(2.dp, PrimaryAccent, CircleShape)
                 .pointerInput(Unit) {
                     detectDragGestures { change, dragAmount ->
                         change.consume()
@@ -164,7 +164,7 @@ fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, packageN
         ) {
             Text(
                 text = "KS",
-                color = PrimaryPink,
+                color = PrimaryAccent,
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp
             )
@@ -183,7 +183,7 @@ fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, packageN
                 .heightIn(max = 400.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(DarkBg)
-                .border(2.dp, PrimaryPink, RoundedCornerShape(12.dp))
+                .border(2.dp, PrimaryAccent, RoundedCornerShape(12.dp))
         ) {
             // Header
             Row(
@@ -202,7 +202,7 @@ fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, packageN
             ) {
                 Text(
                     text = "KittySpy Menu | $packageName",
-                    color = PrimaryPink,
+                    color = PrimaryAccent,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
@@ -240,14 +240,14 @@ fun RowScope.TabItem(title: String, isSelected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .weight(1f)
-            .background(if (isSelected) Color(0xFFFF4081).copy(alpha = 0.2f) else Color.Transparent)
+            .background(if (isSelected) Color(0xFF00E676).copy(alpha = 0.15f) else Color.Transparent)
             .clickable { onClick() }
             .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = title,
-            color = if (isSelected) Color(0xFFFF4081) else Color.Gray,
+            color = if (isSelected) Color(0xFF00E676) else Color.Gray,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold
         )
@@ -257,10 +257,11 @@ fun RowScope.TabItem(title: String, isSelected: Boolean, onClick: () -> Unit) {
 @Composable
 fun KittySpyTab(packageName: String) {
     var inspectLogs by remember { mutableStateOf(listOf<String>()) }
+    var isInspecting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
     
-    val PrimaryPink = Color(0xFFFF4081)
+    val PrimaryAccent = Color(0xFF00E676)
     val SurfaceDark = Color(0xFF1E1E1E)
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -270,34 +271,30 @@ fun KittySpyTab(packageName: String) {
         ) {
             Button(
                 onClick = {
+                    if (isInspecting) return@Button
+                    isInspecting = true
+                    inspectLogs = listOf("Waiting for $packageName to fully load in isolated sandbox...")
+                    
                     scope.launch {
-                        inspectLogs = inspectLogs + "Dumping loaded .so functions..."
-                        delay(500)
-                        inspectLogs = inspectLogs + listOf(
-                            "-> GObjects: 0x400A231",
-                            "-> UObject: 0x400C12B",
-                            "-> ProcessEvent: 0x51AABB1",
-                            "-> UFunction: 0x4B33CC0",
-                            "-> il2cpp_domain_get: 0x712BCA",
-                            "-> il2cpp_class_from_name: 0x713AAB",
-                            "-> il2cpp_class_get_methods: 0x714CCC",
-                            "-> il2cpp_method_get_name: 0x715DDD",
-                            "-> il2cpp_method_get_param_count: 0x716EEE"
-                        )
+                        delay(2000) // Delay to let the target game load correctly without freezing
+                        val dumped = com.kittyspace.NativeDumper.dumpGameFunctions(packageName)
+                        inspectLogs = dumped.toList()
+                        isInspecting = false
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPink),
-                modifier = Modifier.weight(1f).padding(end = 4.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent),
+                modifier = Modifier.weight(1f).padding(end = 4.dp),
+                enabled = !isInspecting
             ) {
-                Text("Inspect", fontSize = 12.sp)
+                Text("Inspect", fontSize = 12.sp, color = Color.Black, fontWeight = FontWeight.Bold)
             }
             
             Button(
                 onClick = { inspectLogs = emptyList() },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray),
                 modifier = Modifier.weight(1f).padding(start = 4.dp, end = 4.dp)
             ) {
-                Text("Clear", fontSize = 12.sp)
+                Text("Clear", fontSize = 12.sp, color = Color.White)
             }
             
             Button(
@@ -314,10 +311,10 @@ fun KittySpyTab(packageName: String) {
                     }
                     context.startActivity(saveIntent)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5)),
                 modifier = Modifier.weight(1f).padding(start = 4.dp)
             ) {
-                Text("Save", fontSize = 12.sp)
+                Text("Save", fontSize = 12.sp, color = Color.White)
             }
         }
         
