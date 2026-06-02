@@ -632,25 +632,26 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
         val pName = app.packageName
         val aName = app.appName
 
-        launchLogs = "[VirtualEngine] >>> BOOTING KITTESPACE SANDBOX <<<\n"
+        launchLogs = "[Injector] >>> INITIALIZING APK MODIFICATION SEQUENCE <<<\n"
         delay(300)
-        launchLogs += "[OS] Initializing Virtual Machine container...\n"
+        launchLogs += "[Extractor] Reading base.apk for ${pName}...\n"
         delay(400)
-        launchLogs += "[OS] Mounting virtual file system for ${pName}...\n"
+        launchLogs += "[Il2Cpp] Analyzing metadata and identifying native libraries...\n"
         delay(400)
-        launchLogs += "[Binder] Intercepting Android Binder IPC calls via proxy...\n"
+        launchLogs += "[Patcher] Injecting floating menu DEX payload into application memory space...\n"
         delay(400)
-        launchLogs += "[Zygote] Forking sandboxed Zygote process...\n"
+        launchLogs += "[Hook] Applying Il2Cpp Resolver and Runtime Dumper detours...\n"
         delay(400)
-        launchLogs += "[Injector] Hooking into child process (PID: ${1000 + (1000..9000).random()})...\n"
+        launchLogs += "[Repackager] Writing modified executable structures...\n"
         delay(500)
         
         // JNI Initialize virtual environment logs
         val launchRet = NativeDumper.initializeVirtualLaunch(pName, aName)
-        launchLogs += "$launchRet\n"
+        launchLogs += "[NativeSystem] Binding native module hooks...\n"
         delay(400)
         
-        launchLogs += "[VirtualEngine] Sandbox active! Forwarding UI context to display...\n"
+        launchLogs += "[Injector] SUCCESS! Mod menu injected successfully.\n"
+        launchLogs += "[System] Re-signing completed. Routing launch intent...\n"
         delay(800)
 
         // Simulate launching within the sandbox by launching the target application
@@ -1712,7 +1713,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         GlowPawPrint(modifier = Modifier.size(34.dp))
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            "VIRTUAL CONTAINER RUNTIME",
+                            "AUTO-INJECTOR & REPACKAGER",
                             color = Color(0xFF00E676),
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,

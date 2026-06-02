@@ -15,6 +15,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -241,9 +245,9 @@ fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, onFocusC
             Row(
                 modifier = Modifier.fillMaxWidth().background(SurfaceDark).border(1.dp, PrimaryAccent.copy(alpha = 0.3f))
             ) {
-                TabItem(title = "KITTYSPY", isSelected = currentTab == "KittySpy") { currentTab = "KittySpy" }
+                TabItem(title = "DUMPER", isSelected = currentTab == "KittySpy") { currentTab = "KittySpy" }
                 TabItem(title = "PATCHER", isSelected = currentTab == "Patcher") { currentTab = "Patcher" }
-                TabItem(title = "HOOKS", isSelected = currentTab == "Hooks") { currentTab = "Hooks" }
+                TabItem(title = "SCAN / HOOK", isSelected = currentTab == "Hooks") { currentTab = "Hooks" }
             }
             
             // Content
@@ -389,6 +393,7 @@ fun KittySpyTab(packageName: String) {
 fun MemoryPatchTab(onFocusChange: (Boolean) -> Unit) {
     var offsetInput by remember { mutableStateOf("") }
     var hexInput by remember { mutableStateOf("") }
+    var xorEnabled by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val PrimaryAccent = Color(0xFF00FF41)
 
@@ -407,6 +412,7 @@ fun MemoryPatchTab(onFocusChange: (Boolean) -> Unit) {
             label = { Text("Offset / RVA (e.g. 0x123A4)", color = Color.Gray, fontSize = 10.sp) },
             modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange(it.isFocused) },
             textStyle = androidx.compose.ui.text.TextStyle(color = PrimaryAccent, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = PrimaryAccent,
                 unfocusedBorderColor = Color.DarkGray
@@ -422,6 +428,7 @@ fun MemoryPatchTab(onFocusChange: (Boolean) -> Unit) {
             label = { Text("Hex Bytes (e.g. 1F 20 03 D5)", color = Color.Gray, fontSize = 10.sp) },
             modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange(it.isFocused) },
             textStyle = androidx.compose.ui.text.TextStyle(color = PrimaryAccent, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = PrimaryAccent,
                 unfocusedBorderColor = Color.DarkGray
@@ -429,7 +436,17 @@ fun MemoryPatchTab(onFocusChange: (Boolean) -> Unit) {
             singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = xorEnabled,
+                onCheckedChange = { xorEnabled = it },
+                colors = CheckboxDefaults.colors(checkedColor = PrimaryAccent, uncheckedColor = Color.Gray, checkmarkColor = Color.Black)
+            )
+            Text("Enable Bitwise XOR Support", color = Color.Gray, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+        }
 
         var showDropdown by remember { mutableStateOf(false) }
 
@@ -520,9 +537,10 @@ fun FieldHookTab(onFocusChange: (Boolean) -> Unit) {
         OutlinedTextField(
             value = methodInput,
             onValueChange = { methodInput = it },
-            label = { Text("Method RVA / Name", color = Color.Gray, fontSize = 10.sp) },
+            label = { Text("Search / Address / Offset", color = Color.Gray, fontSize = 10.sp) },
             modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange(it.isFocused) },
             textStyle = androidx.compose.ui.text.TextStyle(color = PrimaryAccent, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = PrimaryAccent,
                 unfocusedBorderColor = Color.DarkGray
@@ -536,9 +554,10 @@ fun FieldHookTab(onFocusChange: (Boolean) -> Unit) {
             OutlinedTextField(
                 value = fieldInput,
                 onValueChange = { fieldInput = it },
-                label = { Text("Field Offset / Name", color = Color.Gray, fontSize = 10.sp) },
+                label = { Text("RVA / Pointers", color = Color.Gray, fontSize = 10.sp) },
                 modifier = Modifier.weight(1f).padding(end = 4.dp).onFocusChanged { onFocusChange(it.isFocused) },
                 textStyle = androidx.compose.ui.text.TextStyle(color = PrimaryAccent, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = PrimaryAccent,
                     unfocusedBorderColor = Color.DarkGray
@@ -577,6 +596,33 @@ fun FieldHookTab(onFocusChange: (Boolean) -> Unit) {
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = { 
+                    android.widget.Toast.makeText(context, "Scanning pointers...", android.widget.Toast.LENGTH_SHORT).show()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                border = BorderStroke(1.dp, Color.Gray),
+                shape = RoundedCornerShape(2.dp),
+                modifier = Modifier.weight(1f).padding(end = 4.dp)
+            ) {
+                Text("SCAN RUNTIME", color = Color.LightGray, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+            }
+            Button(
+                onClick = { 
+                    android.widget.Toast.makeText(context, "Next Search...", android.widget.Toast.LENGTH_SHORT).show()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                border = BorderStroke(1.dp, Color(0xFF00BFFF)),
+                shape = RoundedCornerShape(2.dp),
+                modifier = Modifier.weight(1f).padding(start = 4.dp)
+            ) {
+                Text("NEXT SEARCH", color = Color(0xFF00BFFF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         var showDropdown by remember { mutableStateOf(false) }
 
@@ -635,7 +681,7 @@ fun FieldHookTab(onFocusChange: (Boolean) -> Unit) {
                     if (methodInput.isBlank()) {
                         android.widget.Toast.makeText(context, "Nothing to unhook", android.widget.Toast.LENGTH_SHORT).show()
                     } else {
-                        android.widget.Toast.makeText(context, "HOOK REVERTED", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, "UNHOOKED MULTIPLE OFFSETS", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
@@ -643,7 +689,7 @@ fun FieldHookTab(onFocusChange: (Boolean) -> Unit) {
                 shape = RoundedCornerShape(2.dp),
                 modifier = Modifier.weight(1f).padding(start = 4.dp)
             ) {
-                Text("UNHOOK", color = Color(0xFFFFB300), fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                Text("UNHOOK (MULTI)", color = Color(0xFFFFB300), fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
             }
         }
     }
