@@ -19,5 +19,5 @@ object NativeDumper {
     external fun initializeVirtualLaunch(packageName: String, appName: String): String
     external fun patchMemorySimulation(packageName: String, address: Long, hexBytes: String): String
     external fun dobyInlineHookSimulation(packageName: String, functionSymbol: String, offset: Long): String
-    external fun dumpGameFunctions(packageName: String): Array<String>
+    external fun dumpGameFunctions(packageName: String, apkPath: String): Array<String>
 }

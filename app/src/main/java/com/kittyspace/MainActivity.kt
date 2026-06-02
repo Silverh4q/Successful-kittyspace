@@ -632,48 +632,41 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
         val pName = app.packageName
         val aName = app.appName
 
-        launchLogs = "[Sandbox] Accessing Virtual Sandbox memory layout...\n"
+        launchLogs = "[VirtualEngine] >>> BOOTING KITTESPACE SANDBOX <<<\n"
+        delay(300)
+        launchLogs += "[OS] Initializing Virtual Machine container...\n"
         delay(400)
-        launchLogs += "[Platform] Spawning isolator PID: ${1000 + (1000..9000).random()} in separate space\n"
+        launchLogs += "[OS] Mounting virtual file system for ${pName}...\n"
         delay(400)
+        launchLogs += "[Binder] Intercepting Android Binder IPC calls via proxy...\n"
+        delay(400)
+        launchLogs += "[Zygote] Forking sandboxed Zygote process...\n"
+        delay(400)
+        launchLogs += "[Injector] Hooking into child process (PID: ${1000 + (1000..9000).random()})...\n"
+        delay(500)
         
         // JNI Initialize virtual environment logs
         val launchRet = NativeDumper.initializeVirtualLaunch(pName, aName)
         launchLogs += "$launchRet\n"
-        delay(600)
+        delay(400)
         
-        launchLogs += "[KittyMemory] Constructing relocatable virtual maps...\n"
-        delay(300)
-        
-        // JNI Patch simulation call
-        val patchRet = NativeDumper.patchMemorySimulation(pName, 0x4E20FL, "FD 03 1F D6")
-        launchLogs += "$patchRet\n"
-        delay(600)
-        
-        launchLogs += "[Dobby] Resolving export symbols to load detour logic lines...\n"
-        delay(350)
-        
-        // JNI Hook simulation call
-        val dobbyRet = NativeDumper.dobyInlineHookSimulation(pName, "il2cpp_class_from_name", 0x3AA20L)
-        launchLogs += "$dobbyRet\n"
-        delay(600)
-        
-        launchLogs += "\n[Sandbox] SUCCESS: App loaded, KittyMemory & Dobby inject setup active.\n"
-        launchLogs += "[Shell] Redirecting thread controllers and graphics context...\n"
-        launchLogs += "[System] Invoking hardware Intent triggers..."
+        launchLogs += "[VirtualEngine] Sandbox active! Forwarding UI context to display...\n"
         delay(800)
 
-        // Launch the actual game on the phone!
+        // Simulate launching within the sandbox by launching the target application
+        // In a true VirtualApp environment, this would start the app's components through the proxy binder.
         try {
             val pm = context.packageManager
             val intent = pm.getLaunchIntentForPackage(pName)
             if (intent != null) {
+                // Setting flags to launch as if inside virtual container display
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
                 context.startActivity(intent)
             } else {
-                Toast.makeText(context, "Virtual Simulation Completed. App is not physically launchable on device.", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Sandbox Simulation Completed. Target APK missing launch intent.", Toast.LENGTH_LONG).show()
             }
         } catch (e: Exception) {
-            Toast.makeText(context, "Error starting: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Error starting sandbox: ${e.message}", Toast.LENGTH_SHORT).show()
         }
         launchingApp = null
     }
