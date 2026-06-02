@@ -2007,7 +2007,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text("STEP 3: ADD DEX CLASSES", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text("Extract 'classes4.dex' from this app's root. Rename it to match the next sequential classes file (e.g., 'classes2.dex', 'classes3.dex') in your target APK and add it to the root of the decompiled APK.", color = Color.Gray, fontSize = 12.sp)
+                                Text("Extract the classes dex file containing 'com.kittyspace' (usually 'classes4.dex' or 'classes3.dex') from this app's root. Rename it to match the next sequential classes file (e.g., 'classes2.dex', 'classes3.dex') in your target APK and add it to the root of the decompiled APK.", color = Color.Gray, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text("STEP 4: INJECT SERVICE IN MAINACTIVITY", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
