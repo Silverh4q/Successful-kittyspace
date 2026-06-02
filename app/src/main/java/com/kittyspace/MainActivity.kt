@@ -694,16 +694,23 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                     IconButton(
                         onClick = {
                             val prefs = context.getSharedPreferences("KittySettings", Context.MODE_PRIVATE)
-                            if (prefs.getBoolean("vip_unlocked", false)) {
+                            val unlockTime = prefs.getLong("vip_unlock_time", 0L)
+                            val currentTime = System.currentTimeMillis()
+                            val isExpired = currentTime - unlockTime > 30L * 24L * 60L * 60L * 1000L // 30 days
+                            if (prefs.getBoolean("vip_unlocked", false) && !isExpired) {
                                 showInjectIntroDialog = true
                             } else {
+                                // Clear if expired
+                                if (prefs.getBoolean("vip_unlocked", false) && isExpired) {
+                                    prefs.edit().putBoolean("vip_unlocked", false).apply()
+                                }
                                 showVipDialogForInject = true
                             }
                         },
                         modifier = Modifier.align(Alignment.TopEnd).padding(top = 16.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Warning, // Temporary icon for Inject Space
+                            imageVector = Icons.Default.Build, // Menu icon for Inject Space
                             contentDescription = "Inject Menu Space",
                             tint = Color(0xFFFFB300),
                             modifier = Modifier.size(32.dp)
@@ -1936,9 +1943,13 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(
                         onClick = {
-                            if (vipKeyInput == "123456" || vipKeyInput == "kittyspyvip") {
+                            val validKeys = listOf("L0RDSILVER777-GPM", "L0RDSILVER677-GPM", "L0RDSILVER667-GPM", "123456", "kittyspyvip")
+                            if (validKeys.contains(vipKeyInput.trim())) {
                                 val prefs = context.getSharedPreferences("KittySettings", Context.MODE_PRIVATE)
-                                prefs.edit().putBoolean("vip_unlocked", true).apply()
+                                prefs.edit()
+                                    .putBoolean("vip_unlocked", true)
+                                    .putLong("vip_unlock_time", System.currentTimeMillis())
+                                    .apply()
                                 showVipDialogForInject = false
                                 showInjectIntroDialog = true
                             } else {
@@ -1996,15 +2007,37 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text("STEP 3: ADD DEX CLASSES", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text("Extract 'kittyspy.dex' from this app. Rename it to match the next sequential classes file (e.g., 'classes2.dex', 'classes3.dex') in your target APK and add it to the root of the decompiled APK.", color = Color.Gray, fontSize = 12.sp)
+                                Text("Extract 'classes.dex' from this app's root. Rename it to match the next sequential classes file (e.g., 'classes2.dex', 'classes3.dex') in your target APK and add it to the root of the decompiled APK.", color = Color.Gray, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text("STEP 4: INJECT SERVICE IN MAINACTIVITY", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 Text("Identify the MainActivity of your game. Open it using MT Manager's Dex Editor and locate the 'onCreate' method. Paste the smali code to invoke this Java function:", color = Color.Gray, fontSize = 12.sp)
                                 
                                 Spacer(modifier = Modifier.height(8.dp))
+                                var isCopiedSnippet by remember { mutableStateOf(false) }
+                                
                                 Box(modifier = Modifier.background(Color(0xFF151515)).border(1.dp, Color(0xFF00E676)).padding(8.dp).fillMaxWidth()) {
-                                    Text("com.kittyspace.ui.KittySpyMenuService.start(this);", color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                        Text("com.kittyspace.ui.KittySpyMenuService.start(this);", color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                                        IconButton(onClick = {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("code", "com.kittyspace.ui.KittySpyMenuService.start(this);"))
+                                            isCopiedSnippet = true
+                                        }, modifier = Modifier.size(24.dp)) {
+                                            Icon(
+                                                imageVector = if (isCopiedSnippet) Icons.Default.Check else Icons.Default.Add, // Using built-in icons available
+                                                contentDescription = "Copy",
+                                                tint = Color(0xFF00E676),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                        LaunchedEffect(isCopiedSnippet) {
+                                            if (isCopiedSnippet) {
+                                                kotlinx.coroutines.delay(2000)
+                                                isCopiedSnippet = false
+                                            }
+                                        }
+                                    }
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
                             }

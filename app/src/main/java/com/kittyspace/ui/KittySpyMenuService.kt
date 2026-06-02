@@ -64,8 +64,14 @@ class KittySpyMenuService : Service(), LifecycleOwner, ViewModelStoreOwner, Save
     companion object {
         @JvmStatic
         fun start(context: Context) {
-            val intent = Intent(context, KittySpyMenuService::class.java)
-            context.startService(intent)
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                try {
+                    val intent = Intent(context, KittySpyMenuService::class.java)
+                    context.startService(intent)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }, 3000) // 3 seconds delay for game to load
         }
     }
 
@@ -172,7 +178,12 @@ fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, onFocusC
     
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = context.getSharedPreferences("KittySettings", android.content.Context.MODE_PRIVATE)
-    var isVipUnlocked by remember { mutableStateOf(prefs.getBoolean("vip_unlocked", false)) }
+    
+    val unlockTime = prefs.getLong("vip_unlock_time", 0L)
+    val currentTime = System.currentTimeMillis()
+    val isExpired = currentTime - unlockTime > 30L * 24L * 60L * 60L * 1000L // 30 days
+    
+    var isVipUnlocked by remember { mutableStateOf(prefs.getBoolean("vip_unlocked", false) && !isExpired) }
     var vipKeyInput by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
 
@@ -290,8 +301,12 @@ fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, onFocusC
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(
                         onClick = {
-                            if (vipKeyInput == "123456" || vipKeyInput == "kittyspyvip") {
-                                prefs.edit().putBoolean("vip_unlocked", true).apply()
+                            val validKeys = listOf("L0RDSILVER777-GPM", "L0RDSILVER677-GPM", "L0RDSILVER667-GPM", "123456", "kittyspyvip")
+                            if (validKeys.contains(vipKeyInput.trim())) {
+                                prefs.edit()
+                                    .putBoolean("vip_unlocked", true)
+                                    .putLong("vip_unlock_time", System.currentTimeMillis())
+                                    .apply()
                                 isVipUnlocked = true
                             } else {
                                 isError = true
