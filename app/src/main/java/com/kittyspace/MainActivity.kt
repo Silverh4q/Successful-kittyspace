@@ -2007,7 +2007,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text("STEP 3: ADD DEX CLASSES", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text("Extract ALL the classes.dex files (e.g., 'classes.dex', 'classes2.dex', 'classes3.dex', 'classes4.dex') from this app's root. Rename them to continue the numerical sequence in your target APK (e.g., if target ends at classes3.dex, name these classes4.dex, classes5.dex, etc.) and add them to the root of the decompiled APK. This is required because the menu uses Jetpack Compose.", color = Color.Gray, fontSize = 12.sp)
+                                Text("Extract the classes.dex file containing 'com.kittyspace' (usually classes.dex or classes2.dex) from this app's root. Add it to your target APK, renaming it to continue the numerical sequence (e.g., if target ends at classes3.dex, name yours classes4.dex).\n\n(Note: You can still extract ALL dex files, but the Mod Menu is now rewritten in pure Android Views to completely eliminate Jetpack Compose crashes on all games!)", color = Color.Gray, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text("STEP 4: INJECT SERVICE IN MAINACTIVITY", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)

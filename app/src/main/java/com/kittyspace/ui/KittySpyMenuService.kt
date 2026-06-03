@@ -1,65 +1,34 @@
 package com.kittyspace.ui
 
+import android.app.AlertDialog
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.text.InputType
+import android.util.TypedValue
 import android.view.Gravity
-import android.view.ViewConfiguration
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
-import androidx.lifecycle.setViewTreeLifecycleOwner
-import androidx.lifecycle.setViewTreeViewModelStoreOwner
-import androidx.savedstate.SavedStateRegistry
-import androidx.savedstate.SavedStateRegistryController
-import androidx.savedstate.SavedStateRegistryOwner
-import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
+import android.widget.Button
+import android.widget.CheckBox
+import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
 import android.widget.Toast
 
-class KittySpyMenuService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
+class KittySpyMenuService : Service() {
 
     companion object {
         @JvmStatic
@@ -70,20 +39,32 @@ class KittySpyMenuService : Service(), LifecycleOwner, ViewModelStoreOwner, Save
     }
 
     private lateinit var windowManager: WindowManager
-    private lateinit var composeView: ComposeView
     private lateinit var layoutParams: WindowManager.LayoutParams
-    
-    private val lifecycleRegistry = LifecycleRegistry(this)
-    private val store = ViewModelStore()
-    private val savedStateRegistryController = SavedStateRegistryController.create(this)
+    private lateinit var rootView: FrameLayout
+    private lateinit var collapsedView: FrameLayout
+    private lateinit var expandedView: LinearLayout
+    private var targetPackageName = "com.unknown"
 
-    override val lifecycle: Lifecycle get() = lifecycleRegistry
-    override val viewModelStore: ViewModelStore get() = store
-    override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
+    private val DarkBg = Color.parseColor("#0D0D0D")
+    private val PrimaryAccent = Color.parseColor("#00FF41")
+    private val SurfaceDark = Color.parseColor("#151515")
+    private val HeaderBg = Color.parseColor("#001F08")
+    private val VipColor = Color.parseColor("#FFB300")
+    private val SaveColor = Color.parseColor("#00BFFF")
+    private val ErrorColor = Color.RED
+
+    private fun Int.dp(): Int = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this.toFloat(), resources.displayMetrics).toInt()
+    private fun Float.dp(): Int = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this, resources.displayMetrics).toInt()
+
+    private fun createBg(bgColor: Int, strokeWidthDp: Int = 0, strokeColor: Int = Color.TRANSPARENT, radiusDp: Float = 0f): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(bgColor)
+            if (strokeWidthDp > 0) setStroke(strokeWidthDp.dp(), strokeColor)
+            cornerRadius = radiusDp.dp().toFloat()
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    private var targetPackageName by mutableStateOf("com.unknown")
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.getStringExtra("packageName")?.let {
@@ -94,10 +75,6 @@ class KittySpyMenuService : Service(), LifecycleOwner, ViewModelStoreOwner, Save
 
     override fun onCreate() {
         super.onCreate()
-        
-        savedStateRegistryController.performRestore(null)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
         val windowType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -117,646 +94,656 @@ class KittySpyMenuService : Service(), LifecycleOwner, ViewModelStoreOwner, Save
             x = 100
             y = 100
         }
-        
-        composeView = ComposeView(this).apply {
-            setViewTreeLifecycleOwner(this@KittySpyMenuService)
-            setViewTreeViewModelStoreOwner(this@KittySpyMenuService)
-            setViewTreeSavedStateRegistryOwner(this@KittySpyMenuService)
+
+        rootView = FrameLayout(this)
+
+        setupCollapsedView()
+        setupExpandedView()
+
+        rootView.addView(expandedView)
+        rootView.addView(collapsedView)
+
+        windowManager.addView(rootView, layoutParams)
+    }
+
+    private var initialX = 0
+    private var initialY = 0
+    private var initialTouchX = 0f
+    private var initialTouchY = 0f
+
+    private val dragTouchListener = View.OnTouchListener { view, event ->
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                initialX = layoutParams.x
+                initialY = layoutParams.y
+                initialTouchX = event.rawX
+                initialTouchY = event.rawY
+                true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                layoutParams.x = initialX + (event.rawX - initialTouchX).toInt()
+                layoutParams.y = initialY + (event.rawY - initialTouchY).toInt()
+                windowManager.updateViewLayout(rootView, layoutParams)
+                true
+            }
+            MotionEvent.ACTION_UP -> {
+                val diffX = event.rawX - initialTouchX
+                val diffY = event.rawY - initialTouchY
+                if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
+                    view.performClick()
+                }
+                true
+            }
+            else -> false
+        }
+    }
+
+    private fun setupCollapsedView() {
+        collapsedView = FrameLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(48.dp(), 48.dp())
+            background = createBg(Color.BLACK, 2, PrimaryAccent, 4f)
             
-            setContent {
-                MaterialTheme {
-                    FloatingMenuUI(
-                        onClose = { stopSelf() },
-                        onDrag = { dx, dy ->
-                            this@KittySpyMenuService.layoutParams.x += dx.roundToInt()
-                            this@KittySpyMenuService.layoutParams.y += dy.roundToInt()
-                            windowManager.updateViewLayout(this@apply, this@KittySpyMenuService.layoutParams)
-                        },
-                        onFocusChange = { focused ->
-                            val currentFlags = this@KittySpyMenuService.layoutParams.flags
-                            val newFlags = if (focused) {
-                                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                            } else {
-                                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                            }
-                            if (currentFlags != newFlags) {
-                                this@KittySpyMenuService.layoutParams.flags = newFlags
-                                windowManager.updateViewLayout(this@apply, this@KittySpyMenuService.layoutParams)
-                            }
-                        },
-                        packageName = targetPackageName
-                    )
+            val text = TextView(this@KittySpyMenuService).apply {
+                this.text = "KS"
+                setTextColor(PrimaryAccent)
+                typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                textSize = 20f
+                layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    gravity = Gravity.CENTER
                 }
             }
+            addView(text)
+            
+            setOnClickListener {
+                collapsedView.visibility = View.GONE
+                expandedView.visibility = View.VISIBLE
+            }
+            setOnTouchListener(dragTouchListener)
+        }
+    }
+
+    private fun setupExpandedView() {
+        expandedView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = FrameLayout.LayoutParams(
+                Math.min(resources.displayMetrics.widthPixels - 32.dp(), 400.dp()), 
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            background = createBg(DarkBg, 1, PrimaryAccent, 4f)
+            visibility = View.GONE
         }
 
-        windowManager.addView(composeView, layoutParams)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = createBg(HeaderBg)
+            setPadding(8.dp(), 6.dp(), 8.dp(), 6.dp())
+            setOnTouchListener(dragTouchListener)
+            
+            val title = TextView(this@KittySpyMenuService).apply {
+                this.text = "SYS.TERMINAL // $targetPackageName"
+                setTextColor(PrimaryAccent)
+                textSize = 11f
+                typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            
+            val btnMin = TextView(this@KittySpyMenuService).apply {
+                this.text = "▼"
+                setTextColor(PrimaryAccent)
+                textSize = 14f
+                typeface = Typeface.DEFAULT_BOLD
+                setPadding(16.dp(), 0, 16.dp(), 0)
+                setOnClickListener {
+                    expandedView.visibility = View.GONE
+                    collapsedView.visibility = View.VISIBLE
+                }
+            }
+            
+            val btnClose = TextView(this@KittySpyMenuService).apply {
+                this.text = "✖"
+                setTextColor(Color.parseColor("#FF3333"))
+                textSize = 14f
+                typeface = Typeface.DEFAULT_BOLD
+                setPadding(16.dp(), 0, 0, 0)
+                setOnClickListener {
+                    stopSelf()
+                }
+            }
+            
+            addView(title)
+            addView(btnMin)
+            addView(btnClose)
+        }
+        expandedView.addView(header)
+
+        val prefs = getSharedPreferences("KittySettings", Context.MODE_PRIVATE)
+        val isVipUnlocked = prefs.getBoolean("vip_unlocked", false)
+
+        val vipView = LinearLayout(this)
+        val mainMenuView = LinearLayout(this)
+
+        vipView.apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16.dp(), 16.dp(), 16.dp(), 16.dp())
+            gravity = Gravity.CENTER
+            
+            val title = TextView(context).apply {
+                this.text = "VIP ACCESS REQUIRED"
+                setTextColor(VipColor)
+                typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                textSize = 16f
+                gravity = Gravity.CENTER
+            }
+            
+            val subtitle = TextView(context).apply {
+                this.text = "Enter VIP key to inject hooks into memory."
+                setTextColor(Color.GRAY)
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setPadding(0, 8.dp(), 0, 16.dp())
+            }
+            
+            val input = EditText(context).apply {
+                hint = "VIP Key"
+                setHintTextColor(Color.DKGRAY)
+                setTextColor(Color.WHITE)
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                background = createBg(Color.TRANSPARENT, 1, Color.DKGRAY, 4f)
+                setPadding(12.dp(), 12.dp(), 12.dp(), 12.dp())
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            }
+            
+            val errorText = TextView(context).apply {
+                this.text = "Invalid Key."
+                setTextColor(ErrorColor)
+                textSize = 10f
+                visibility = View.GONE
+                setPadding(0, 4.dp(), 0, 0)
+            }
+            
+            val btnVerify = Button(context).apply {
+                this.text = "VERIFY VIP"
+                setTextColor(VipColor)
+                typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
+                textSize = 12f
+                background = createBg(Color.TRANSPARENT, 1, VipColor, 4f)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    topMargin = 24.dp()
+                }
+                setOnClickListener {
+                    val key = input.text.toString()
+                    if(key == "123456" || key == "kittyspyvip") {
+                        prefs.edit().putBoolean("vip_unlocked", true).apply()
+                        vipView.visibility = View.GONE
+                        mainMenuView.visibility = View.VISIBLE
+                    } else {
+                        errorText.visibility = View.VISIBLE
+                        input.background = createBg(Color.TRANSPARENT, 1, ErrorColor, 4f)
+                    }
+                }
+            }
+            
+            input.setOnFocusChangeListener { _, hasFocus ->
+                 onFocusChange(hasFocus)
+                 if (hasFocus && errorText.visibility == View.VISIBLE) {
+                     errorText.visibility = View.GONE
+                     input.background = createBg(Color.TRANSPARENT, 1, VipColor, 4f)
+                 } else if (hasFocus) {
+                     input.background = createBg(Color.TRANSPARENT, 1, VipColor, 4f)
+                 } else {
+                     input.background = createBg(Color.TRANSPARENT, 1, Color.DKGRAY, 4f)
+                 }
+            }
+            
+            addView(title)
+            addView(subtitle)
+            addView(input)
+            addView(errorText)
+            addView(btnVerify)
+        }
+
+        mainMenuView.apply {
+            orientation = LinearLayout.VERTICAL
+            
+            val tabsRow = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                background = createBg(SurfaceDark, 1, Color.argb(76, 0, 255, 65))
+            }
+            
+            val contentArea = FrameLayout(context).apply {
+                setPadding(8.dp(), 8.dp(), 8.dp(), 8.dp())
+            }
+            
+            val tab1 = createKittySpyTab()
+            val tab2 = createPatchTab()
+            val tab3 = createHookTab()
+            
+            contentArea.addView(tab1)
+            contentArea.addView(tab2)
+            contentArea.addView(tab3)
+            
+            var currentSelectedTab: View? = null
+            var currentSelectedContent: View? = null
+            
+            fun createTab(title: String, targetContent: View): TextView {
+                return TextView(context).apply {
+                    this.text = title
+                    setTextColor(Color.GRAY)
+                    textSize = 12f
+                    typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                    gravity = Gravity.CENTER
+                    setPadding(0, 10.dp(), 0, 10.dp())
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                    
+                    setOnClickListener {
+                        currentSelectedTab?.let {
+                            it.background = null
+                            (it as TextView).setTextColor(Color.GRAY)
+                        }
+                        currentSelectedContent?.visibility = View.GONE
+                        
+                        background = createBg(Color.argb(51, 0, 255, 65), 1, PrimaryAccent)
+                        setTextColor(PrimaryAccent)
+                        targetContent.visibility = View.VISIBLE
+                        
+                        currentSelectedTab = this
+                        currentSelectedContent = targetContent
+                    }
+                }
+            }
+            
+            val t1 = createTab("KITTYSPY", tab1)
+            val t2 = createTab("PATCHER", tab2)
+            val t3 = createTab("SCAN / HOOK", tab3)
+            
+            tabsRow.addView(t1)
+            tabsRow.addView(t2)
+            tabsRow.addView(t3)
+            
+            t1.performClick()
+            
+            addView(tabsRow)
+            addView(contentArea)
+        }
+
+        if(isVipUnlocked) {
+            vipView.visibility = View.GONE
+            mainMenuView.visibility = View.VISIBLE
+        } else {
+            vipView.visibility = View.VISIBLE
+            mainMenuView.visibility = View.GONE
+        }
+
+        expandedView.addView(vipView)
+        expandedView.addView(mainMenuView)
+    }
+
+    private fun onFocusChange(hasFocus: Boolean) {
+        if (hasFocus) {
+            layoutParams.flags = layoutParams.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
+        } else {
+            layoutParams.flags = layoutParams.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        }
+        windowManager.updateViewLayout(rootView, layoutParams)
+    }
+
+    private fun createKittySpyTab(): View {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            
+            val btnRow = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+            }
+            
+            fun createBtn(textStr: String, col: Int, weight: Float): Button {
+                return Button(context).apply {
+                    this.text = textStr
+                    setTextColor(col)
+                    textSize = 11f
+                    typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                    background = createBg(Color.TRANSPARENT, 1, col, 2f)
+                    setPadding(0,0,0,0)
+                    layoutParams = LinearLayout.LayoutParams(0, 36.dp(), weight).apply {
+                        leftMargin = 2.dp()
+                        rightMargin = 2.dp()
+                    }
+                }
+            }
+            
+            val btnInspect = createBtn("INSPECT", PrimaryAccent, 1f)
+            val btnClear = createBtn("CLEAR", Color.LTGRAY, 1f)
+            val btnSave = createBtn("SAVE", SaveColor, 1f)
+            
+            btnRow.addView(btnInspect)
+            btnRow.addView(btnClear)
+            btnRow.addView(btnSave)
+            
+            val logTerminal = TextView(context).apply {
+                setTextColor(PrimaryAccent)
+                textSize = 9f
+                typeface = Typeface.MONOSPACE
+            }
+            
+            val scroll = ScrollView(context).apply {
+                background = createBg(Color.parseColor("#050A05"), 1, Color.argb(128, 0, 255, 65), 2f)
+                setPadding(6.dp(), 6.dp(), 6.dp(), 6.dp())
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 250.dp()).apply {
+                    topMargin = 8.dp()
+                }
+                addView(logTerminal)
+            }
+            
+            var isInspecting = false
+            
+            btnInspect.setOnClickListener {
+                if (isInspecting) return@setOnClickListener
+                isInspecting = true
+                logTerminal.text = "[SYS] Initializing dump sequence against target: $targetPackageName...\n"
+                
+                Handler(Looper.getMainLooper()).postDelayed({
+                    Thread {
+                        var apkPath = "unknown"
+                        try {
+                            val targetInfo = packageManager.getApplicationInfo(targetPackageName, 0)
+                            apkPath = targetInfo.publicSourceDir
+                        } catch (e: Exception) {}
+                        
+                        val dumped = com.kittyspace.NativeDumper.dumpGameFunctions(targetPackageName, apkPath)
+                        
+                        Handler(Looper.getMainLooper()).post {
+                            logTerminal.append(dumped.joinToString("\n"))
+                            isInspecting = false
+                            scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+                        }
+                    }.start()
+                }, 2000)
+            }
+            
+            btnClear.setOnClickListener {
+                logTerminal.text = ""
+            }
+            
+            btnSave.setOnClickListener {
+                val content = "------------KITTYSPY-----------\nInspected game ($targetPackageName)\n\n${logTerminal.text}"
+                com.kittyspace.ui.KittySpySaveActivity.dataToSave = content
+                val saveIntent = Intent(context, com.kittyspace.ui.KittySpySaveActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    putExtra("fileName", "kittyspy_$targetPackageName.py")
+                }
+                context.startActivity(saveIntent)
+            }
+            
+            addView(btnRow)
+            addView(scroll)
+        }
+    }
+
+    private fun createInput(hintText: String): EditText {
+        return EditText(this).apply {
+            hint = hintText
+            setHintTextColor(Color.GRAY)
+            setTextColor(PrimaryAccent)
+            textSize = 12f
+            typeface = Typeface.MONOSPACE
+            background = createBg(Color.TRANSPARENT, 1, Color.DKGRAY, 4f)
+            setPadding(12.dp(), 12.dp(), 12.dp(), 12.dp())
+            inputType = InputType.TYPE_CLASS_TEXT
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 8.dp()
+            }
+            setOnFocusChangeListener { _, hasFocus -> 
+                onFocusChange(hasFocus) 
+                background = createBg(Color.TRANSPARENT, 1, if(hasFocus) PrimaryAccent else Color.DKGRAY, 4f)
+            }
+        }
+    }
+
+    private fun createPatchTab(): View {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 8.dp(), 0, 0)
+            
+            val offsetInput = createInput("Offset / RVA (e.g. 0x123A4)")
+            val hexInput = createInput("Hex Bytes (e.g. 1F 20 03 D5)")
+            
+            val checkRow = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, 2.dp(), 0, 8.dp())
+                
+                val cb = CheckBox(context)
+                val tv = TextView(context).apply {
+                    this.text = "Enable Bitwise XOR Support"
+                    setTextColor(Color.GRAY)
+                    textSize = 11f
+                    typeface = Typeface.MONOSPACE
+                }
+                addView(cb)
+                addView(tv)
+            }
+            
+            val btnSelect = Button(context).apply {
+                this.text = "SELECT HEX PATCH"
+                setTextColor(SaveColor)
+                textSize = 11f
+                typeface = Typeface.MONOSPACE
+                background = createBg(Color.TRANSPARENT, 1, SaveColor, 2f)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 40.dp()).apply { bottomMargin = 16.dp() }
+                
+                val patches = arrayOf(
+                    "NOP" to "1F 20 03 D5",
+                    "RET TRUE" to "20 00 80 52 C0 03 5F D6",
+                    "RET FALSE" to "00 00 80 52 C0 03 5F D6",
+                    "INT 999999" to "DF 93 4C D2 C0 03 5F D6",
+                    "FLOAT 999999" to "00 04 28 1E C0 03 5F D6"
+                )
+                
+                setOnClickListener {
+                    AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                        .setItems(patches.map { "${it.first} - ${it.second}" }.toTypedArray()) { _, which ->
+                            hexInput.setText(patches[which].second)
+                        }.show().window?.setType(
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY 
+                            else WindowManager.LayoutParams.TYPE_PHONE
+                        )
+                }
+            }
+            
+            val actionRow = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                
+                val btnPatch = Button(context).apply {
+                    this.text = "PATCH"
+                    setTextColor(PrimaryAccent)
+                    textSize = 11f
+                    typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                    background = createBg(Color.TRANSPARENT, 1, PrimaryAccent, 2f)
+                    layoutParams = LinearLayout.LayoutParams(0, 40.dp(), 1f).apply { rightMargin = 4.dp() }
+                    setOnClickListener {
+                        val off = offsetInput.text.toString()
+                        val hx = hexInput.text.toString()
+                        if (off.isBlank() || hx.isBlank()) Toast.makeText(context, "Fill offset and hex fields", Toast.LENGTH_SHORT).show()
+                        else if (!off.startsWith("0x", true) || hx.length < 2) Toast.makeText(context, "INVALID OFFSETS OR HEX", Toast.LENGTH_SHORT).show()
+                        else Toast.makeText(context, "OFFSET PATCHED", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                
+                val btnRestore = Button(context).apply {
+                    this.text = "RESTORE"
+                    setTextColor(VipColor)
+                    textSize = 11f
+                    typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                    background = createBg(Color.TRANSPARENT, 1, VipColor, 2f)
+                    layoutParams = LinearLayout.LayoutParams(0, 40.dp(), 1f).apply { leftMargin = 4.dp() }
+                    setOnClickListener {
+                        if (offsetInput.text.isNullOrBlank()) Toast.makeText(context, "Nothing to restore", Toast.LENGTH_SHORT).show()
+                        else Toast.makeText(context, "OFFSET RESTORED", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                
+                addView(btnPatch)
+                addView(btnRestore)
+            }
+            
+            addView(offsetInput)
+            addView(hexInput)
+            addView(checkRow)
+            addView(btnSelect)
+            addView(actionRow)
+        }
+    }
+
+    private fun createHookTab(): View {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 8.dp(), 0, 0)
+            
+            val methodInput = createInput("Search / Address / Offset")
+            var fieldInput: EditText? = null
+            
+            val row2 = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8.dp() }
+                
+                fieldInput = EditText(context).apply {
+                    hint = "RVA / Pointers"
+                    setHintTextColor(Color.GRAY)
+                    setTextColor(PrimaryAccent)
+                    textSize = 12f
+                    typeface = Typeface.MONOSPACE
+                    background = createBg(Color.TRANSPARENT, 1, Color.DKGRAY, 4f)
+                    setPadding(12.dp(), 12.dp(), 12.dp(), 12.dp())
+                    inputType = InputType.TYPE_CLASS_TEXT
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 4.dp() }
+                    setOnFocusChangeListener { _, hasFocus -> 
+                        onFocusChange(hasFocus) 
+                        background = createBg(Color.TRANSPARENT, 1, if(hasFocus) PrimaryAccent else Color.DKGRAY, 4f)
+                    }
+                }
+                
+                val typeBtn = Button(context).apply {
+                    this.text = "INT"
+                    setTextColor(Color.LTGRAY)
+                    textSize = 10f
+                    background = createBg(Color.TRANSPARENT, 1, Color.GRAY, 2f)
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 0.5f).apply { leftMargin = 4.dp() }
+                    
+                    val types = arrayOf("INT", "FLOAT", "BOOL", "STRING", "STATIC")
+                    setOnClickListener {
+                        AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                            .setItems(types) { _, which ->
+                                this.text = types[which]
+                            }.show().window?.setType(
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY 
+                                else WindowManager.LayoutParams.TYPE_PHONE
+                            )
+                    }
+                }
+                
+                addView(fieldInput)
+                addView(typeBtn)
+            }
+            
+            val scanRow = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 40.dp()).apply { bottomMargin = 12.dp() }
+                
+                val btnScan = Button(context).apply {
+                    this.text = "SCAN RUNTIME"
+                    setTextColor(Color.LTGRAY)
+                    textSize = 11f
+                    typeface = Typeface.MONOSPACE
+                    background = createBg(Color.TRANSPARENT, 1, Color.GRAY, 2f)
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { rightMargin = 4.dp() }
+                    setOnClickListener { Toast.makeText(context, "Scanning pointers...", Toast.LENGTH_SHORT).show() }
+                }
+                val btnNext = Button(context).apply {
+                    this.text = "NEXT SEARCH"
+                    setTextColor(SaveColor)
+                    textSize = 11f
+                    typeface = Typeface.MONOSPACE
+                    background = createBg(Color.TRANSPARENT, 1, SaveColor, 2f)
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { leftMargin = 4.dp() }
+                    setOnClickListener { Toast.makeText(context, "Next Search...", Toast.LENGTH_SHORT).show() }
+                }
+                addView(btnScan)
+                addView(btnNext)
+            }
+            
+            val btnSelectHook = Button(context).apply {
+                this.text = "SELECT HOOKING PATCH"
+                setTextColor(SaveColor)
+                textSize = 11f
+                typeface = Typeface.MONOSPACE
+                background = createBg(Color.TRANSPARENT, 1, SaveColor, 2f)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 40.dp()).apply { bottomMargin = 16.dp() }
+                
+                val hooks = arrayOf(
+                    "Bypass Auth: Return True",
+                    "Infinite Money: Max Value (99999)",
+                    "God Mode: No Damage",
+                    "Speed Hack: Float Multiply 2.5f"
+                )
+                
+                setOnClickListener {
+                    AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                        .setItems(hooks) { _, which ->
+                            methodInput.setText("0x" + (1000..9999).random().toString(16).uppercase())
+                            fieldInput?.setText("0x" + (10..99).random().toString(16).uppercase())
+                        }.show().window?.setType(
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY 
+                            else WindowManager.LayoutParams.TYPE_PHONE
+                        )
+                }
+            }
+            
+            val actionRow = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 40.dp())
+                
+                val btnHook = Button(context).apply {
+                    this.text = "HOOK"
+                    setTextColor(PrimaryAccent)
+                    textSize = 11f
+                    typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                    background = createBg(Color.TRANSPARENT, 1, PrimaryAccent, 2f)
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { rightMargin = 4.dp() }
+                    setOnClickListener {
+                        if (methodInput.text.isBlank() || fieldInput?.text.isNullOrBlank()) Toast.makeText(context, "Fill method and field offset", Toast.LENGTH_SHORT).show()
+                        else if (methodInput.text.length < 3) Toast.makeText(context, "INVALID OFFSETS", Toast.LENGTH_SHORT).show()
+                        else Toast.makeText(context, "HOOK SUCCESSFULLY APPLIED", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                
+                val btnUnhook = Button(context).apply {
+                    this.text = "UNHOOK (MULTI)"
+                    setTextColor(VipColor)
+                    textSize = 10f
+                    typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                    background = createBg(Color.TRANSPARENT, 1, VipColor, 2f)
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { leftMargin = 4.dp() }
+                    setOnClickListener {
+                        if (methodInput.text.isBlank()) Toast.makeText(context, "Nothing to unhook", Toast.LENGTH_SHORT).show()
+                        else Toast.makeText(context, "UNHOOKED MULTIPLE OFFSETS", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                
+                addView(btnHook)
+                addView(btnUnhook)
+            }
+            
+            addView(methodInput)
+            addView(row2)
+            addView(scanRow)
+            addView(btnSelectHook)
+            addView(actionRow)
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-        store.clear()
-        if (::windowManager.isInitialized && ::composeView.isInitialized) {
-            windowManager.removeView(composeView)
-        }
-    }
-}
-
-@Composable
-fun FloatingMenuUI(onClose: () -> Unit, onDrag: (Float, Float) -> Unit, onFocusChange: (Boolean) -> Unit, packageName: String) {
-    var isMinimized by remember { mutableStateOf(false) }
-    var currentTab by remember { mutableStateOf("KittySpy") }
-    
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val prefs = context.getSharedPreferences("KittySettings", android.content.Context.MODE_PRIVATE)
-    var isVipUnlocked by remember { mutableStateOf(prefs.getBoolean("vip_unlocked", false)) }
-    var vipKeyInput by remember { mutableStateOf("") }
-    var isError by remember { mutableStateOf(false) }
-
-    LaunchedEffect(isMinimized) {
-        if (isMinimized) onFocusChange(false)
-    }
-
-    val DarkBg = Color(0xFF0D0D0D)
-    val PrimaryAccent = Color(0xFF00FF41) // Matrix neon green
-    val SurfaceDark = Color(0xFF151515)
-    val TextLight = Color(0xFFE0E0E0)
-    
-    Box {
-        if (isMinimized) {
-            // Floating icon - Hexagon or sharp square
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(Color.Black, shape = RoundedCornerShape(4.dp))
-                    .border(2.dp, PrimaryAccent, RoundedCornerShape(4.dp))
-                    .pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            onDrag(dragAmount.x, dragAmount.y)
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "KS",
-                    color = PrimaryAccent,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 20.sp
-                )
-                // Click to maximize
-                Button(
-                    onClick = { isMinimized = false },
-                    modifier = Modifier.fillMaxSize(),
-                    shape = RoundedCornerShape(0.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
-                ) {}
-            }
-        }
-        
-        Box(modifier = if (isMinimized) Modifier.size(0.dp).clipToBounds() else Modifier) {
-            // Full menu
-            Column(
-                modifier = Modifier
-                    .width(400.dp)
-                    .heightIn(max = 500.dp)
-                    .background(DarkBg, shape = RoundedCornerShape(4.dp))
-                    .border(1.dp, PrimaryAccent, RoundedCornerShape(4.dp))
-            ) {
-            // Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFF001F08))
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
-                    .pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            onDrag(dragAmount.x, dragAmount.y)
-                        }
-                    },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "SYS.TERMINAL // $packageName",
-                    color = PrimaryAccent,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                IconButton(onClick = { isMinimized = true }, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Minimize", tint = PrimaryAccent)
-                }
-                IconButton(onClick = onClose, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color(0xFFFF3333))
-                }
-            }
-            
-            if (!isVipUnlocked) {
-                // VIP Login Screen inside Mod Menu
-                Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    Text("VIP ACCESS REQUIRED", color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Enter VIP key to inject hooks into memory.", color = Color.Gray, fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    OutlinedTextField(
-                        value = vipKeyInput,
-                        onValueChange = { vipKeyInput = it; isError = false },
-                        label = { Text("VIP Key") },
-                        isError = isError,
-                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFFFFB300),
-                            unfocusedBorderColor = Color.DarkGray,
-                            errorBorderColor = Color.Red
-                        ),
-                        modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange(it.isFocused) },
-                        singleLine = true
-                    )
-                    
-                    if (isError) {
-                        Text("Invalid Key.", color = Color.Red, fontSize = 10.sp, modifier = Modifier.align(Alignment.Start).padding(top = 4.dp))
-                    }
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = {
-                            if (vipKeyInput == "123456" || vipKeyInput == "kittyspyvip") {
-                                prefs.edit().putBoolean("vip_unlocked", true).apply()
-                                isVipUnlocked = true
-                            } else {
-                                isError = true
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                        border = BorderStroke(1.dp, Color(0xFFFFB300)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("VERIFY VIP", color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
-                    }
-                }
-            } else {
-                // Main unlocked UI (Tabs)
-                Row(
-                    modifier = Modifier.fillMaxWidth().background(SurfaceDark).border(1.dp, PrimaryAccent.copy(alpha = 0.3f))
-                ) {
-                    TabItem(title = "KITTYSPY", isSelected = currentTab == "KittySpy") { currentTab = "KittySpy" }
-                    TabItem(title = "PATCHER", isSelected = currentTab == "Patcher") { currentTab = "Patcher" }
-                    TabItem(title = "SCAN / HOOK", isSelected = currentTab == "Hooks") { currentTab = "Hooks" }
-                }
-                
-                // Content
-                Box(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-                    when (currentTab) {
-                        "KittySpy" -> KittySpyTab(packageName)
-                        "Patcher" -> MemoryPatchTab(onFocusChange)
-                        "Hooks" -> FieldHookTab(onFocusChange)
-                    }
-                }
-            }
-        }
-        }
-    }
-}
-
-@Composable
-fun RowScope.TabItem(title: String, isSelected: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .weight(1f)
-            .background(if (isSelected) Color(0xFF00FF41).copy(alpha = 0.2f) else Color.Transparent)
-            .border(
-                1.dp,
-                if (isSelected) Color(0xFF00FF41) else Color.Transparent,
-                RoundedCornerShape(0.dp)
-            )
-            .clickable { onClick() }
-            .padding(vertical = 10.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = title,
-            color = if (isSelected) Color(0xFF00FF41) else Color.Gray,
-            fontSize = 12.sp,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-fun KittySpyTab(packageName: String) {
-    var inspectLogs by remember { mutableStateOf(listOf<String>()) }
-    var isInspecting by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
-    
-    val PrimaryAccent = Color(0xFF00FF41)
-    val SurfaceDark = Color(0xFF151515)
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Button(
-                onClick = {
-                    if (isInspecting) return@Button
-                    isInspecting = true
-                    inspectLogs = listOf("[SYS] Initializing dump sequence against target: $packageName...")
-                    
-                    scope.launch {
-                        delay(2000) // Delay to let the target game load correctly without freezing
-                        var apkPath = ""
-                        try {
-                            val targetInfo = context.packageManager.getApplicationInfo(packageName, 0)
-                            apkPath = targetInfo.publicSourceDir
-                        } catch (e: Exception) {
-                            apkPath = "unknown"
-                        }
-                        
-                        val dumped = com.kittyspace.NativeDumper.dumpGameFunctions(packageName, apkPath)
-                        inspectLogs = dumped.toList()
-                        isInspecting = false
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                border = BorderStroke(1.dp, PrimaryAccent),
-                shape = RoundedCornerShape(2.dp),
-                modifier = Modifier.weight(1f).padding(end = 4.dp),
-                enabled = !isInspecting
-            ) {
-                Text("INSPECT", fontSize = 11.sp, color = PrimaryAccent, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            }
-            
-            Button(
-                onClick = { inspectLogs = emptyList() },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                border = BorderStroke(1.dp, Color.Gray),
-                shape = RoundedCornerShape(2.dp),
-                modifier = Modifier.weight(1f).padding(horizontal = 2.dp)
-            ) {
-                Text("CLEAR", fontSize = 11.sp, color = Color.LightGray, fontFamily = FontFamily.Monospace)
-            }
-            
-            Button(
-                onClick = { 
-                    val content = buildString {
-                        append("------------KITTYSPY-----------\n")
-                        append("Inspected game ($packageName)\n\n")
-                        inspectLogs.forEach { append("$it\n") }
-                    }
-                    com.kittyspace.ui.KittySpySaveActivity.dataToSave = content
-                    val saveIntent = Intent(context, com.kittyspace.ui.KittySpySaveActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        putExtra("fileName", "kittyspy_$packageName.py")
-                    }
-                    context.startActivity(saveIntent)
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                border = BorderStroke(1.dp, Color(0xFF00BFFF)),
-                shape = RoundedCornerShape(2.dp),
-                modifier = Modifier.weight(1f).padding(start = 4.dp)
-            ) {
-                Text("SAVE", fontSize = 11.sp, color = Color(0xFF00BFFF), fontFamily = FontFamily.Monospace)
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Inspect Box (Terminal style)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFF050A05), shape = RoundedCornerShape(2.dp))
-                .border(1.dp, PrimaryAccent.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
-                .padding(6.dp)
-        ) {
-            LazyColumn {
-                items(inspectLogs) { log ->
-                    Text(
-                        text = log,
-                        color = PrimaryAccent,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 9.sp
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MemoryPatchTab(onFocusChange: (Boolean) -> Unit) {
-    var offsetInput by remember { mutableStateOf("") }
-    var hexInput by remember { mutableStateOf("") }
-    var xorEnabled by remember { mutableStateOf(false) }
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val PrimaryAccent = Color(0xFF00FF41)
-
-    val hexPatches = listOf(
-        "NOP" to "1F 20 03 D5",
-        "RET TRUE" to "20 00 80 52 C0 03 5F D6",
-        "RET FALSE" to "00 00 80 52 C0 03 5F D6",
-        "INT 999999" to "DF 93 4C D2 C0 03 5F D6",
-        "FLOAT 999999" to "00 04 28 1E C0 03 5F D6"
-    )
-
-    Column(modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
-        OutlinedTextField(
-            value = offsetInput,
-            onValueChange = { offsetInput = it },
-            label = { Text("Offset / RVA (e.g. 0x123A4)", color = Color.Gray, fontSize = 10.sp) },
-            modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange(it.isFocused) },
-            textStyle = androidx.compose.ui.text.TextStyle(color = PrimaryAccent, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = PrimaryAccent,
-                unfocusedBorderColor = Color.DarkGray
-            ),
-            singleLine = true
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        OutlinedTextField(
-            value = hexInput,
-            onValueChange = { hexInput = it },
-            label = { Text("Hex Bytes (e.g. 1F 20 03 D5)", color = Color.Gray, fontSize = 10.sp) },
-            modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange(it.isFocused) },
-            textStyle = androidx.compose.ui.text.TextStyle(color = PrimaryAccent, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = PrimaryAccent,
-                unfocusedBorderColor = Color.DarkGray
-            ),
-            singleLine = true
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = xorEnabled,
-                onCheckedChange = { xorEnabled = it },
-                colors = CheckboxDefaults.colors(checkedColor = PrimaryAccent, uncheckedColor = Color.Gray, checkmarkColor = Color.Black)
-            )
-            Text("Enable Bitwise XOR Support", color = Color.Gray, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-        }
-
-        var showDropdown by remember { mutableStateOf(false) }
-
-        Box {
-            Button(
-                onClick = { showDropdown = true },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                border = BorderStroke(1.dp, Color(0xFF00BFFF)),
-                shape = RoundedCornerShape(2.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("SELECT HEX PATCH", color = Color(0xFF00BFFF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-            }
-            
-            DropdownMenu(
-                expanded = showDropdown,
-                onDismissRequest = { showDropdown = false },
-                modifier = Modifier.background(Color(0xFF151515)).border(1.dp, PrimaryAccent)
-            ) {
-                hexPatches.forEach { (name, hex) ->
-                    DropdownMenuItem(
-                        text = { Text("$name - $hex", color = PrimaryAccent, fontSize = 11.sp, fontFamily = FontFamily.Monospace) },
-                        onClick = {
-                            hexInput = hex
-                            showDropdown = false
-                        }
-                    )
-                }
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = {
-                    if (offsetInput.isBlank() || hexInput.isBlank()) {
-                        android.widget.Toast.makeText(context, "Fill offset and hex fields", android.widget.Toast.LENGTH_SHORT).show()
-                    } else if (!offsetInput.startsWith("0x", ignoreCase = true) || hexInput.length < 2) {
-                        android.widget.Toast.makeText(context, "INVALID OFFSETS OR HEX", android.widget.Toast.LENGTH_SHORT).show()
-                    } else {
-                        android.widget.Toast.makeText(context, "OFFSET PATCHED", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                border = BorderStroke(1.dp, PrimaryAccent),
-                shape = RoundedCornerShape(2.dp),
-                modifier = Modifier.weight(1f).padding(end = 4.dp)
-            ) {
-                Text("PATCH", color = PrimaryAccent, fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            }
-            
-            Button(
-                onClick = {
-                    if (offsetInput.isBlank()) {
-                        android.widget.Toast.makeText(context, "Nothing to restore", android.widget.Toast.LENGTH_SHORT).show()
-                    } else {
-                        android.widget.Toast.makeText(context, "OFFSET RESTORED", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                border = BorderStroke(1.dp, Color(0xFFFFB300)),
-                shape = RoundedCornerShape(2.dp),
-                modifier = Modifier.weight(1f).padding(start = 4.dp)
-            ) {
-                Text("RESTORE", color = Color(0xFFFFB300), fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-@Composable
-fun FieldHookTab(onFocusChange: (Boolean) -> Unit) {
-    var methodInput by remember { mutableStateOf("") }
-    var fieldInput by remember { mutableStateOf("") }
-    var typeInput by remember { mutableStateOf("int") }
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val PrimaryAccent = Color(0xFF00FF41)
-
-    val hookPatches = listOf(
-        "Bypass Auth" to "Return True",
-        "Infinite Money" to "Max Value (99999)",
-        "God Mode" to "No Damage",
-        "Speed Hack" to "Float Multiply 2.5f"
-    )
-
-    Column(modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
-        OutlinedTextField(
-            value = methodInput,
-            onValueChange = { methodInput = it },
-            label = { Text("Search / Address / Offset", color = Color.Gray, fontSize = 10.sp) },
-            modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange(it.isFocused) },
-            textStyle = androidx.compose.ui.text.TextStyle(color = PrimaryAccent, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = PrimaryAccent,
-                unfocusedBorderColor = Color.DarkGray
-            ),
-            singleLine = true
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Row(modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(
-                value = fieldInput,
-                onValueChange = { fieldInput = it },
-                label = { Text("RVA / Pointers", color = Color.Gray, fontSize = 10.sp) },
-                modifier = Modifier.weight(1f).padding(end = 4.dp).onFocusChanged { onFocusChange(it.isFocused) },
-                textStyle = androidx.compose.ui.text.TextStyle(color = PrimaryAccent, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PrimaryAccent,
-                    unfocusedBorderColor = Color.DarkGray
-                ),
-                singleLine = true
-            )
-
-            var typeDropdown by remember { mutableStateOf(false) }
-            Box(modifier = Modifier.weight(0.5f).padding(start = 4.dp).align(Alignment.CenterVertically)) {
-                Button(
-                    onClick = { typeDropdown = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                    border = BorderStroke(1.dp, Color.Gray),
-                    shape = RoundedCornerShape(2.dp),
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
-                ) {
-                    Text(typeInput.uppercase(), color = Color.LightGray, fontSize = 10.sp)
-                }
-                
-                DropdownMenu(
-                    expanded = typeDropdown,
-                    onDismissRequest = { typeDropdown = false },
-                    modifier = Modifier.background(Color(0xFF151515)).border(1.dp, PrimaryAccent)
-                ) {
-                    listOf("int", "float", "bool", "string", "static").forEach { type ->
-                        DropdownMenuItem(
-                            text = { Text(type.uppercase(), color = PrimaryAccent, fontSize = 11.sp, fontFamily = FontFamily.Monospace) },
-                            onClick = {
-                                typeInput = type
-                                typeDropdown = false
-                            }
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = { 
-                    android.widget.Toast.makeText(context, "Scanning pointers...", android.widget.Toast.LENGTH_SHORT).show()
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                border = BorderStroke(1.dp, Color.Gray),
-                shape = RoundedCornerShape(2.dp),
-                modifier = Modifier.weight(1f).padding(end = 4.dp)
-            ) {
-                Text("SCAN RUNTIME", color = Color.LightGray, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-            }
-            Button(
-                onClick = { 
-                    android.widget.Toast.makeText(context, "Next Search...", android.widget.Toast.LENGTH_SHORT).show()
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                border = BorderStroke(1.dp, Color(0xFF00BFFF)),
-                shape = RoundedCornerShape(2.dp),
-                modifier = Modifier.weight(1f).padding(start = 4.dp)
-            ) {
-                Text("NEXT SEARCH", color = Color(0xFF00BFFF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        var showDropdown by remember { mutableStateOf(false) }
-
-        Box {
-            Button(
-                onClick = { showDropdown = true },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                border = BorderStroke(1.dp, Color(0xFF00BFFF)),
-                shape = RoundedCornerShape(2.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("SELECT HOOKING PATCH", color = Color(0xFF00BFFF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-            }
-            
-            DropdownMenu(
-                expanded = showDropdown,
-                onDismissRequest = { showDropdown = false },
-                modifier = Modifier.background(Color(0xFF151515)).border(1.dp, PrimaryAccent)
-            ) {
-                hookPatches.forEach { (name, desc) ->
-                    DropdownMenuItem(
-                        text = { Text("$name: $desc", color = PrimaryAccent, fontSize = 11.sp, fontFamily = FontFamily.Monospace) },
-                        onClick = {
-                            methodInput = "0x" + (1000..9999).random().toString(16).uppercase()
-                            fieldInput = "0x" + (10..99).random().toString(16).uppercase()
-                            showDropdown = false
-                        }
-                    )
-                }
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = {
-                    if (methodInput.isBlank() || fieldInput.isBlank()) {
-                        android.widget.Toast.makeText(context, "Fill method and field offset", android.widget.Toast.LENGTH_SHORT).show()
-                    } else if (methodInput.length < 3) {
-                        android.widget.Toast.makeText(context, "INVALID OFFSETS", android.widget.Toast.LENGTH_SHORT).show()
-                    } else {
-                        android.widget.Toast.makeText(context, "HOOK SUCCESSFULLY APPLIED", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                border = BorderStroke(1.dp, PrimaryAccent),
-                shape = RoundedCornerShape(2.dp),
-                modifier = Modifier.weight(1f).padding(end = 4.dp)
-            ) {
-                Text("HOOK", color = PrimaryAccent, fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            }
-            
-            Button(
-                onClick = {
-                    if (methodInput.isBlank()) {
-                        android.widget.Toast.makeText(context, "Nothing to unhook", android.widget.Toast.LENGTH_SHORT).show()
-                    } else {
-                        android.widget.Toast.makeText(context, "UNHOOKED MULTIPLE OFFSETS", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                border = BorderStroke(1.dp, Color(0xFFFFB300)),
-                shape = RoundedCornerShape(2.dp),
-                modifier = Modifier.weight(1f).padding(start = 4.dp)
-            ) {
-                Text("UNHOOK (MULTI)", color = Color(0xFFFFB300), fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            }
+        if (::windowManager.isInitialized && ::rootView.isInitialized) {
+            windowManager.removeView(rootView)
         }
     }
 }
