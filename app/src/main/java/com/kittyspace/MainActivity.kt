@@ -2007,7 +2007,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text("STEP 3: ADD DEX CLASSES", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text("Extract the classes dex file containing 'com.kittyspace' (usually 'classes4.dex' or 'classes3.dex') from this app's root. Rename it to match the next sequential classes file (e.g., 'classes2.dex', 'classes3.dex') in your target APK and add it to the root of the decompiled APK.", color = Color.Gray, fontSize = 12.sp)
+                                Text("Extract ALL the classes.dex files (e.g., 'classes.dex', 'classes2.dex', 'classes3.dex', 'classes4.dex') from this app's root. Rename them to continue the numerical sequence in your target APK (e.g., if target ends at classes3.dex, name these classes4.dex, classes5.dex, etc.) and add them to the root of the decompiled APK. This is required because the menu uses Jetpack Compose.", color = Color.Gray, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text("STEP 4: INJECT SERVICE IN MAINACTIVITY", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
@@ -2042,31 +2042,63 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 Text("STEP 5: UPDATE MANIFEST", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text("Open AndroidManifest.xml in MT Manager using XML Editor. Add the 'SYSTEM_ALERT_WINDOW' permission, and declare the service inside <application>.", color = Color.Gray, fontSize = 12.sp)
+                                Text("Open AndroidManifest.xml in MT Manager using XML Editor.", color = Color.Gray, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("A. Add the 'SYSTEM_ALERT_WINDOW' permission above the <application> tag:", color = Color.Gray, fontSize = 12.sp)
                                 
                                 Spacer(modifier = Modifier.height(8.dp))
-                                var isCopiedManifest by remember { mutableStateOf(false) }
+                                var isCopiedPermission by remember { mutableStateOf(false) }
                                 
                                 Box(modifier = Modifier.background(Color(0xFF151515)).border(1.dp, Color(0xFF00E676)).padding(8.dp).fillMaxWidth()) {
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                        val manifestCode = "<uses-permission android:name=\"android.permission.SYSTEM_ALERT_WINDOW\" />\n<service android:name=\"com.kittyspace.ui.KittySpyMenuService\" android:exported=\"false\" />"
-                                        Text(manifestCode, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                                        val permCode = "<uses-permission android:name=\"android.permission.SYSTEM_ALERT_WINDOW\" />"
+                                        Text(permCode, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
                                         IconButton(onClick = {
                                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("manifest_code", manifestCode))
-                                            isCopiedManifest = true
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("manifest_perm", permCode))
+                                            isCopiedPermission = true
                                         }, modifier = Modifier.size(24.dp)) {
                                             Icon(
-                                                imageVector = if (isCopiedManifest) Icons.Default.Check else Icons.Default.Add,
-                                                contentDescription = "Copy Manifest",
+                                                imageVector = if (isCopiedPermission) Icons.Default.Check else Icons.Default.Add,
+                                                contentDescription = "Copy Permission",
                                                 tint = Color(0xFF00E676),
                                                 modifier = Modifier.size(16.dp)
                                             )
                                         }
-                                        LaunchedEffect(isCopiedManifest) {
-                                            if (isCopiedManifest) {
+                                        LaunchedEffect(isCopiedPermission) {
+                                            if (isCopiedPermission) {
                                                 kotlinx.coroutines.delay(2000)
-                                                isCopiedManifest = false
+                                                isCopiedPermission = false
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text("B. Declare the service inside the <application> tag:", color = Color.Gray, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                var isCopiedService by remember { mutableStateOf(false) }
+                                
+                                Box(modifier = Modifier.background(Color(0xFF151515)).border(1.dp, Color(0xFF00E676)).padding(8.dp).fillMaxWidth()) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                        val serviceCode = "<service android:name=\"com.kittyspace.ui.KittySpyMenuService\" android:exported=\"false\" />"
+                                        Text(serviceCode, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                                        IconButton(onClick = {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("manifest_service", serviceCode))
+                                            isCopiedService = true
+                                        }, modifier = Modifier.size(24.dp)) {
+                                            Icon(
+                                                imageVector = if (isCopiedService) Icons.Default.Check else Icons.Default.Add,
+                                                contentDescription = "Copy Service",
+                                                tint = Color(0xFF00E676),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                        LaunchedEffect(isCopiedService) {
+                                            if (isCopiedService) {
+                                                kotlinx.coroutines.delay(2000)
+                                                isCopiedService = false
                                             }
                                         }
                                     }
