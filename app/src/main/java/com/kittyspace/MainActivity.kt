@@ -2002,8 +2002,8 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                 Text("Use MT Manager to locate your APK. Decompile it or extract the files to a safe directory.", color = Color.Gray, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                Text("STEP 2: ADD NATIVE LIBRARY", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text("Extract 'libkittyspymenu.so' from this injector app. Place it inside the 'lib/armeabi-v7a' or 'lib/arm64-v8a' directory of your target APK based on its architecture.", color = Color.Gray, fontSize = 12.sp)
+                                Text("STEP 2: ADD NATIVE LIBRARIES", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("Extract 'libkittyspymenu.so' AND 'libkittydumper.so' from this injector app. Place them inside the 'lib/armeabi-v7a' or 'lib/arm64-v8a' directory of your target APK based on its architecture.", color = Color.Gray, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text("STEP 3: ADD DEX CLASSES", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)

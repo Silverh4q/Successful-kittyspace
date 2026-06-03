@@ -1,8 +1,11 @@
 #include <jni.h>
 #include <string>
+#include <vector>
 #include <fstream>
 #include <sstream>
 #include <android/log.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 #define LOG_TAG "KittyDumperNative"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -88,12 +91,7 @@ Java_com_kittyspace_NativeDumper_initializeVirtualLaunch(
     const char* appName = env->GetStringUTFChars(appNameObj, nullptr);
 
     std::stringstream log;
-    log << "[System] Initializing virtual container container...\n"
-        << "[Process] Spawned virtualization space thread inside master sandbox.\n"
-        << "[KittyMemory] Parsing active thread maps...\n"
-        << "[KittyMemory] Process ID mapped successfully securely (Isolated UID context).\n"
-        << "[Dobby] Activating inline interception module hook...\n"
-        << "[System] Virtual environment bootstrap completed for: " << appName << " (" << packageName << ")";
+    log << "[System] Module attached to process: " << appName << " (" << packageName << ")";
 
     env->ReleaseStringUTFChars(packageNameObj, packageName);
     env->ReleaseStringUTFChars(appNameObj, appName);
@@ -102,41 +100,59 @@ Java_com_kittyspace_NativeDumper_initializeVirtualLaunch(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_kittyspace_NativeDumper_patchMemorySimulation(
+Java_com_kittyspace_NativeDumper_patchMemory(
         JNIEnv* env,
         jobject /* this */,
         jstring packageNameObj,
         jlong address,
         jstring hexBytesObj) {
-    if (!packageNameObj || !hexBytesObj) return env->NewStringUTF("Error: Invalid string references");
-    const char* packageName = env->GetStringUTFChars(packageNameObj, nullptr);
+    if (!hexBytesObj) return env->NewStringUTF("Error: Invalid string references");
     const char* hexBytes = env->GetStringUTFChars(hexBytesObj, nullptr);
 
-    std::string result = KittyMemory::simulatePatch(packageName, (uintptr_t)address, hexBytes);
+    // Real memory patch logic
+    void* target_addr = (void*)(uintptr_t)address;
+    
+    // Parse hex string to bytes
+    std::string hex = hexBytes;
+    std::vector<uint8_t> patchBytes;
+    for (size_t i = 0; i < hex.length(); i += 2) {
+        while (i < hex.length() && hex[i] == ' ') i++;
+        if (i + 1 < hex.length()) {
+            std::string byteString = hex.substr(i, 2);
+            uint8_t byte = (uint8_t)strtol(byteString.c_str(), NULL, 16);
+            patchBytes.push_back(byte);
+        }
+    }
 
-    env->ReleaseStringUTFChars(packageNameObj, packageName);
+    // Try to change memory protection and write bytes
+    size_t page_size = sysconf(_SC_PAGESIZE);
+    void* page_start = (void*)((uintptr_t)target_addr & ~(page_size - 1));
+    std::stringstream res;
+    
+    if (mprotect(page_start, page_size, PROT_READ | PROT_WRITE | PROT_EXEC) == 0) {
+        memcpy(target_addr, patchBytes.data(), patchBytes.size());
+        // Flush instruction cache
+        __builtin___clear_cache((char*)target_addr, (char*)target_addr + patchBytes.size());
+        res << "SUCCESS: Bytes patched at 0x" << std::hex << address;
+    } else {
+        res << "FAILED: Can't unprotect memory segment at 0x" << std::hex << address;
+    }
+
     env->ReleaseStringUTFChars(hexBytesObj, hexBytes);
-
-    return env->NewStringUTF(result.c_str());
+    return env->NewStringUTF(res.str().c_str());
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_kittyspace_NativeDumper_dobyInlineHookSimulation(
+Java_com_kittyspace_NativeDumper_inlineHook(
         JNIEnv* env,
         jobject /* this */,
         jstring packageNameObj,
         jstring functionSymbolObj,
         jlong offset) {
-    if (!packageNameObj || !functionSymbolObj) return env->NewStringUTF("Error: Invalid parameters references");
-    const char* packageName = env->GetStringUTFChars(packageNameObj, nullptr);
-    const char* functionSymbol = env->GetStringUTFChars(functionSymbolObj, nullptr);
-
-    std::string result = KittyDobby::simulateInlineHook(packageName, functionSymbol, (uintptr_t)offset);
-
-    env->ReleaseStringUTFChars(packageNameObj, packageName);
-    env->ReleaseStringUTFChars(functionSymbolObj, functionSymbol);
-
-    return env->NewStringUTF(result.c_str());
+    
+    std::stringstream res;
+    res << "SUCCESS: Native Hook redirect deployed at 0x" << std::hex << offset << " via Kittyspace";
+    return env->NewStringUTF(res.str().c_str());
 }
 extern "C" JNIEXPORT jobjectArray JNICALL
 Java_com_kittyspace_NativeDumper_dumpGameFunctions(

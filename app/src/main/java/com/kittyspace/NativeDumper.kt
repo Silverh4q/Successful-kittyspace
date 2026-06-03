@@ -12,12 +12,11 @@ object NativeDumper {
         }
     }
 
-    external fun stringFromJNI(): String
+    external fun patchMemory(packageName: String, address: Long, hexBytes: String): String
+    external fun inlineHook(packageName: String, functionSymbol: String, offset: Long): String
+    external fun dumpGameFunctions(packageName: String, apkPath: String): Array<String>
+    
     external fun verifyElfHeader(filePath: String): Boolean
     external fun verifyGlobalMetadataHeader(filePath: String): Boolean
-
     external fun initializeVirtualLaunch(packageName: String, appName: String): String
-    external fun patchMemorySimulation(packageName: String, address: Long, hexBytes: String): String
-    external fun dobyInlineHookSimulation(packageName: String, functionSymbol: String, offset: Long): String
-    external fun dumpGameFunctions(packageName: String, apkPath: String): Array<String>
 }

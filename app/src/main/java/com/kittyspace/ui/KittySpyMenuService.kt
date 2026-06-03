@@ -626,7 +626,7 @@ class KittySpyMenuService : Service() {
                         else {
                             try {
                                 val address = java.lang.Long.decode(off)
-                                val res = com.kittyspace.NativeDumper.patchMemorySimulation(targetPackageName, address, hx)
+                                val res = com.kittyspace.NativeDumper.patchMemory(targetPackageName, address, hx)
                                 Toast.makeText(context, "PATCHED: $res", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Error patching offset: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -788,7 +788,7 @@ class KittySpyMenuService : Service() {
                         else {
                             try {
                                 val address = java.lang.Long.decode(addressOff)
-                                val res = com.kittyspace.NativeDumper.dobyInlineHookSimulation(targetPackageName, fieldName, address)
+                                val res = com.kittyspace.NativeDumper.inlineHook(targetPackageName, fieldName, address)
                                 Toast.makeText(context, "HOOK APPLIED: $res", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Error hooking offset: ${e.message}", Toast.LENGTH_SHORT).show()
