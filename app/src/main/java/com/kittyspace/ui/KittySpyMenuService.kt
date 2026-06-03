@@ -75,6 +75,7 @@ class KittySpyMenuService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        targetPackageName = this.packageName
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
             val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName")).apply {
@@ -394,6 +395,23 @@ class KittySpyMenuService : Service() {
         expandedView.addView(mainMenuView)
     }
 
+    private fun showOverlayDialog(items: Array<String>, onItemSelected: (Int) -> Unit) {
+        val themeContext = android.view.ContextThemeWrapper(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        val dialog = android.app.AlertDialog.Builder(themeContext)
+            .setItems(items) { _, which -> onItemSelected(which) }
+            .create()
+        
+        val windowType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+        
+        dialog.window?.setType(windowType)
+        dialog.show()
+    }
+
     private fun onFocusChange(hasFocus: Boolean) {
         if (hasFocus) {
             layoutParams.flags = layoutParams.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
@@ -481,12 +499,23 @@ class KittySpyMenuService : Service() {
             
             btnSave.setOnClickListener {
                 val content = "------------KITTYSPY-----------\nInspected game ($targetPackageName)\n\n${logTerminal.text}"
-                com.kittyspace.ui.KittySpySaveActivity.dataToSave = content
-                val saveIntent = Intent(context, com.kittyspace.ui.KittySpySaveActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    putExtra("fileName", "kittyspy_$targetPackageName.py")
+                try {
+                    com.kittyspace.ui.KittySpySaveActivity.dataToSave = content
+                    val saveIntent = Intent(context, com.kittyspace.ui.KittySpySaveActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        putExtra("fileName", "kittyspy_$targetPackageName.py")
+                    }
+                    context.startActivity(saveIntent)
+                } catch (e: Exception) {
+                    try {
+                        val fileName = "kittyspy_$targetPackageName.py"
+                        val file = java.io.File(context.getExternalFilesDir(null), fileName)
+                        file.writeText(content)
+                        Toast.makeText(context, "Saved file to android/data/$targetPackageName/files/$fileName", Toast.LENGTH_LONG).show()
+                    } catch (e2: Exception) {
+                        Toast.makeText(context, "Save failed! No permissions.", Toast.LENGTH_SHORT).show()
+                    }
                 }
-                context.startActivity(saveIntent)
             }
             
             addView(btnRow)
@@ -555,13 +584,10 @@ class KittySpyMenuService : Service() {
                 )
                 
                 setOnClickListener {
-                    AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                        .setItems(patches.map { "${it.first} - ${it.second}" }.toTypedArray()) { _, which ->
-                            hexInput.setText(patches[which].second)
-                        }.show().window?.setType(
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY 
-                            else WindowManager.LayoutParams.TYPE_PHONE
-                        )
+                    val items = patches.map { "${it.first} - ${it.second}" }.toTypedArray()
+                    showOverlayDialog(items) { which ->
+                        hexInput.setText(patches[which].second)
+                    }
                 }
             }
             
@@ -646,13 +672,9 @@ class KittySpyMenuService : Service() {
                     
                     val types = arrayOf("INT", "FLOAT", "BOOL", "STRING", "STATIC")
                     setOnClickListener {
-                        AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                            .setItems(types) { _, which ->
-                                this.text = types[which]
-                            }.show().window?.setType(
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY 
-                                else WindowManager.LayoutParams.TYPE_PHONE
-                            )
+                        showOverlayDialog(types) { which ->
+                            this.text = types[which]
+                        }
                     }
                 }
                 
@@ -702,14 +724,10 @@ class KittySpyMenuService : Service() {
                 )
                 
                 setOnClickListener {
-                    AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                        .setItems(hooks) { _, which ->
-                            methodInput.setText("0x" + (1000..9999).random().toString(16).uppercase())
-                            fieldInput?.setText("0x" + (10..99).random().toString(16).uppercase())
-                        }.show().window?.setType(
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY 
-                            else WindowManager.LayoutParams.TYPE_PHONE
-                        )
+                    showOverlayDialog(hooks) { _ ->
+                        methodInput.setText("0x" + (1000..9999).random().toString(16).uppercase())
+                        fieldInput?.setText("0x" + (10..99).random().toString(16).uppercase())
+                    }
                 }
             }
             
