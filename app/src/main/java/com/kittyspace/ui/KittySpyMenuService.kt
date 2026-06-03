@@ -287,8 +287,8 @@ class KittySpyMenuService : Service() {
                     topMargin = 24.dp()
                 }
                 setOnClickListener {
-                    val key = input.text.toString()
-                    if(key == "123456" || key == "kittyspyvip") {
+                    val key = input.text.toString().trim()
+                    if(key == "L0RDSILVER777-GPM" || key == "L0RDSILVER677-GPM" || key == "L0RDSILVER667-GPM") {
                         prefs.edit().putBoolean("vip_unlocked", true).apply()
                         vipView.visibility = View.GONE
                         mainMenuView.visibility = View.VISIBLE
