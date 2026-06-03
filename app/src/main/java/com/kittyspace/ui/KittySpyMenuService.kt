@@ -75,6 +75,17 @@ class KittySpyMenuService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
+            val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+            Toast.makeText(this, "Please grant Display over other apps permission for the Mod Menu to work", Toast.LENGTH_LONG).show()
+            stopSelf()
+            return
+        }
+        
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
         val windowType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -103,7 +114,12 @@ class KittySpyMenuService : Service() {
         rootView.addView(expandedView)
         rootView.addView(collapsedView)
 
-        windowManager.addView(rootView, layoutParams)
+        try {
+            windowManager.addView(rootView, layoutParams)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to inject Mod Menu: ${e.message}", Toast.LENGTH_LONG).show()
+            stopSelf()
+        }
     }
 
     private var initialX = 0
