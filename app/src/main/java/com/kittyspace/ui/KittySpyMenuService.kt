@@ -470,6 +470,7 @@ class KittySpyMenuService : Service() {
             var isInspecting = false
             
             btnInspect.setOnClickListener {
+                it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
                 if (isInspecting) return@setOnClickListener
                 isInspecting = true
                 logTerminal.text = "[SYS] Initializing dump sequence against target: $targetPackageName...\n"
@@ -479,13 +480,19 @@ class KittySpyMenuService : Service() {
                         var apkPath = "unknown"
                         try {
                             val targetInfo = packageManager.getApplicationInfo(targetPackageName, 0)
-                            apkPath = targetInfo.publicSourceDir
+                            if (targetInfo.publicSourceDir != null) {
+                                apkPath = targetInfo.publicSourceDir
+                            }
                         } catch (e: Exception) {}
                         
                         val dumped = com.kittyspace.NativeDumper.dumpGameFunctions(targetPackageName, apkPath)
                         
                         Handler(Looper.getMainLooper()).post {
-                            logTerminal.append(dumped.joinToString("\n"))
+                            if (dumped != null) {
+                                logTerminal.append(dumped.joinToString("\n"))
+                            } else {
+                                logTerminal.append("[Error] Failed to dump game functions.\n")
+                            }
                             isInspecting = false
                             scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
                         }
@@ -494,10 +501,12 @@ class KittySpyMenuService : Service() {
             }
             
             btnClear.setOnClickListener {
+                it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
                 logTerminal.text = ""
             }
             
             btnSave.setOnClickListener {
+                it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
                 val content = "------------KITTYSPY-----------\nInspected game ($targetPackageName)\n\n${logTerminal.text}"
                 try {
                     com.kittyspace.ui.KittySpySaveActivity.dataToSave = content
@@ -580,10 +589,16 @@ class KittySpyMenuService : Service() {
                     "RET TRUE" to "20 00 80 52 C0 03 5F D6",
                     "RET FALSE" to "00 00 80 52 C0 03 5F D6",
                     "INT 999999" to "DF 93 4C D2 C0 03 5F D6",
-                    "FLOAT 999999" to "00 04 28 1E C0 03 5F D6"
+                    "INT 1" to "20 00 80 52 C0 03 5F D6",
+                    "FLOAT 999999" to "00 04 28 1E C0 03 5F D6",
+                    "FLOAT 1.0" to "00 00 28 1E C0 03 5F D6",
+                    "FLOAT 5.0" to "00 10 28 1E C0 03 5F D6",
+                    "FLOAT 10.0" to "00 20 28 1E C0 03 5F D6",
+                    "B B (Infinite Loop)" to "00 00 00 14"
                 )
                 
                 setOnClickListener {
+                    it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
                     val items = patches.map { "${it.first} - ${it.second}" }.toTypedArray()
                     showOverlayDialog(items) { which ->
                         hexInput.setText(patches[which].second)
@@ -602,11 +617,21 @@ class KittySpyMenuService : Service() {
                     background = createBg(Color.TRANSPARENT, 1, PrimaryAccent, 2f)
                     layoutParams = LinearLayout.LayoutParams(0, 40.dp(), 1f).apply { rightMargin = 4.dp() }
                     setOnClickListener {
-                        val off = offsetInput.text.toString()
-                        val hx = hexInput.text.toString()
-                        if (off.isBlank() || hx.isBlank()) Toast.makeText(context, "Fill offset and hex fields", Toast.LENGTH_SHORT).show()
-                        else if (!off.startsWith("0x", true) || hx.length < 2) Toast.makeText(context, "INVALID OFFSETS OR HEX", Toast.LENGTH_SHORT).show()
-                        else Toast.makeText(context, "OFFSET PATCHED", Toast.LENGTH_SHORT).show()
+                        it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
+                        val off = offsetInput.text.toString().trim()
+                        val hx = hexInput.text.toString().trim()
+                        if (off.isBlank() || hx.isBlank()) Toast.makeText(context, "Error: Fill offset and hex fields", Toast.LENGTH_SHORT).show()
+                        else if (!off.startsWith("0x", true)) Toast.makeText(context, "Error: INVALID OFFSET. Must start with 0x", Toast.LENGTH_SHORT).show()
+                        else if (hx.length < 2) Toast.makeText(context, "Error: INVALID HEX", Toast.LENGTH_SHORT).show()
+                        else {
+                            try {
+                                val address = java.lang.Long.decode(off)
+                                val res = com.kittyspace.NativeDumper.patchMemorySimulation(targetPackageName, address, hx)
+                                Toast.makeText(context, "PATCHED: $res", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Error patching offset: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     }
                 }
                 
@@ -618,7 +643,8 @@ class KittySpyMenuService : Service() {
                     background = createBg(Color.TRANSPARENT, 1, VipColor, 2f)
                     layoutParams = LinearLayout.LayoutParams(0, 40.dp(), 1f).apply { leftMargin = 4.dp() }
                     setOnClickListener {
-                        if (offsetInput.text.isNullOrBlank()) Toast.makeText(context, "Nothing to restore", Toast.LENGTH_SHORT).show()
+                        it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
+                        if (offsetInput.text.isNullOrBlank()) Toast.makeText(context, "Error: Nothing to restore", Toast.LENGTH_SHORT).show()
                         else Toast.makeText(context, "OFFSET RESTORED", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -693,7 +719,10 @@ class KittySpyMenuService : Service() {
                     typeface = Typeface.MONOSPACE
                     background = createBg(Color.TRANSPARENT, 1, Color.GRAY, 2f)
                     layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { rightMargin = 4.dp() }
-                    setOnClickListener { Toast.makeText(context, "Scanning pointers...", Toast.LENGTH_SHORT).show() }
+                    setOnClickListener {
+                        it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
+                        Toast.makeText(context, "Scanning pointers...", Toast.LENGTH_SHORT).show()
+                    }
                 }
                 val btnNext = Button(context).apply {
                     this.text = "NEXT SEARCH"
@@ -702,7 +731,10 @@ class KittySpyMenuService : Service() {
                     typeface = Typeface.MONOSPACE
                     background = createBg(Color.TRANSPARENT, 1, SaveColor, 2f)
                     layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { leftMargin = 4.dp() }
-                    setOnClickListener { Toast.makeText(context, "Next Search...", Toast.LENGTH_SHORT).show() }
+                    setOnClickListener {
+                        it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
+                        Toast.makeText(context, "Next Search...", Toast.LENGTH_SHORT).show()
+                    }
                 }
                 addView(btnScan)
                 addView(btnNext)
@@ -720,10 +752,15 @@ class KittySpyMenuService : Service() {
                     "Bypass Auth: Return True",
                     "Infinite Money: Max Value (99999)",
                     "God Mode: No Damage",
-                    "Speed Hack: Float Multiply 2.5f"
+                    "No Recoil: Zero Multiplier",
+                    "Infinite Ammo: Freeze Value",
+                    "Speed Hack: Float Multiply 2.5f",
+                    "Custom Pointer Hook",
+                    "Unity: il2cpp_class_get_methods"
                 )
                 
                 setOnClickListener {
+                    it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
                     showOverlayDialog(hooks) { _ ->
                         methodInput.setText("0x" + (1000..9999).random().toString(16).uppercase())
                         fieldInput?.setText("0x" + (10..99).random().toString(16).uppercase())
@@ -743,9 +780,20 @@ class KittySpyMenuService : Service() {
                     background = createBg(Color.TRANSPARENT, 1, PrimaryAccent, 2f)
                     layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { rightMargin = 4.dp() }
                     setOnClickListener {
-                        if (methodInput.text.isBlank() || fieldInput?.text.isNullOrBlank()) Toast.makeText(context, "Fill method and field offset", Toast.LENGTH_SHORT).show()
-                        else if (methodInput.text.length < 3) Toast.makeText(context, "INVALID OFFSETS", Toast.LENGTH_SHORT).show()
-                        else Toast.makeText(context, "HOOK SUCCESSFULLY APPLIED", Toast.LENGTH_SHORT).show()
+                        it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
+                        val addressOff = methodInput.text.toString().trim()
+                        val fieldName = fieldInput?.text?.toString()?.trim() ?: "unknown"
+                        if (addressOff.isBlank() || fieldName.isBlank()) Toast.makeText(context, "Error: Fill method and field offset", Toast.LENGTH_SHORT).show()
+                        else if (!addressOff.startsWith("0x", true)) Toast.makeText(context, "Error: INVALID OFFSET", Toast.LENGTH_SHORT).show()
+                        else {
+                            try {
+                                val address = java.lang.Long.decode(addressOff)
+                                val res = com.kittyspace.NativeDumper.dobyInlineHookSimulation(targetPackageName, fieldName, address)
+                                Toast.makeText(context, "HOOK APPLIED: $res", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Error hooking offset: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     }
                 }
                 
@@ -757,7 +805,8 @@ class KittySpyMenuService : Service() {
                     background = createBg(Color.TRANSPARENT, 1, VipColor, 2f)
                     layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { leftMargin = 4.dp() }
                     setOnClickListener {
-                        if (methodInput.text.isBlank()) Toast.makeText(context, "Nothing to unhook", Toast.LENGTH_SHORT).show()
+                        it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
+                        if (methodInput.text.isBlank()) Toast.makeText(context, "Error: Nothing to unhook", Toast.LENGTH_SHORT).show()
                         else Toast.makeText(context, "UNHOOKED MULTIPLE OFFSETS", Toast.LENGTH_SHORT).show()
                     }
                 }
