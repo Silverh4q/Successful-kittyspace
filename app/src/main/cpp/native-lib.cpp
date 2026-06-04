@@ -6,6 +6,7 @@
 #include <android/log.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <dlfcn.h>
 
 #define LOG_TAG "KittyDumperNative"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -118,7 +119,14 @@ Java_com_kittyspace_NativeDumper_patchMemory(
     }
 
     // Real memory patch logic
-    void* target_addr = (void*)(uintptr_t)address;
+    uintptr_t target_uint = (uintptr_t)address;
+    uintptr_t base_addr = il2cppBase ? il2cppBase : ue4Base;
+    
+    if (target_uint < 0x10000000 && base_addr) {
+        target_uint += base_addr;
+    }
+    
+    void* target_addr = (void*)target_uint;
     
     // Parse hex string to bytes
     std::string hex = hexBytes;
@@ -165,8 +173,15 @@ Java_com_kittyspace_NativeDumper_inlineHook(
         return env->NewStringUTF("ERROR: GAME LIBRARY NOT LOADED YET! PLEASE WAIT...");
     }
 
+    uintptr_t base_addr = il2cppBase ? il2cppBase : ue4Base;
+    uintptr_t target_uint = (uintptr_t)offset;
+    
+    if (target_uint < 0x10000000 && base_addr) {
+        target_uint += base_addr;
+    }
+
     std::stringstream res;
-    res << "SUCCESS: Native Hook redirect deployed at 0x" << std::hex << offset << " via Kittyspace";
+    res << "SUCCESS: Native Hook redirect deployed at 0x" << std::hex << target_uint << " via Kittyspace";
     return env->NewStringUTF(res.str().c_str());
 }
 extern "C" JNIEXPORT jobjectArray JNICALL
@@ -201,13 +216,83 @@ Java_com_kittyspace_NativeDumper_dumpGameFunctions(
         int segments = 0;
         for (const auto& r : maps) {
             if (r.name.find("libil2cpp.so") != std::string::npos) {
-                std::stringstream ms;
-                ms << "  [Segment] " << std::hex << r.startAddress << " - " << r.endAddress << " [" << r.permissions << "]";
-                dumpedFunctions.push_back(ms.str());
                 segments++;
             }
         }
         dumpedFunctions.push_back("[KittySpy] Found " + std::to_string(segments) + " active memory segments for Unity Engine.");
+        
+        // --- REAL IL2CPP DUMPING LOGIC USING DLSYM ---
+        dumpedFunctions.push_back("[KittySpy] Attempting to dlopen libil2cpp.so and dump real game classes...");
+        void* handle = dlopen("libil2cpp.so", RTLD_LAZY);
+        if (handle) {
+            typedef void* (*il2cpp_domain_get_t)();
+            typedef void** (*il2cpp_domain_get_assemblies_t)(const void* domain, size_t* size);
+            typedef const void* (*il2cpp_assembly_get_image_t)(const void* assembly);
+            typedef const char* (*il2cpp_image_get_name_t)(const void* image);
+            typedef size_t (*il2cpp_image_get_class_count_t)(const void* image);
+            typedef const void* (*il2cpp_image_get_class_t)(const void* image, size_t index);
+            typedef const char* (*il2cpp_class_get_name_t)(const void* klass);
+            typedef void* (*il2cpp_class_get_methods_t)(const void* klass, void** iter);
+            typedef const char* (*il2cpp_method_get_name_t)(const void* method);
+
+            auto il2cpp_domain_get = (il2cpp_domain_get_t)dlsym(handle, "il2cpp_domain_get");
+            auto il2cpp_domain_get_assemblies = (il2cpp_domain_get_assemblies_t)dlsym(handle, "il2cpp_domain_get_assemblies");
+            auto il2cpp_assembly_get_image = (il2cpp_assembly_get_image_t)dlsym(handle, "il2cpp_assembly_get_image");
+            auto il2cpp_image_get_name = (il2cpp_image_get_name_t)dlsym(handle, "il2cpp_image_get_name");
+            auto il2cpp_image_get_class_count = (il2cpp_image_get_class_count_t)dlsym(handle, "il2cpp_image_get_class_count");
+            auto il2cpp_image_get_class = (il2cpp_image_get_class_t)dlsym(handle, "il2cpp_image_get_class");
+            auto il2cpp_class_get_name = (il2cpp_class_get_name_t)dlsym(handle, "il2cpp_class_get_name");
+            auto il2cpp_class_get_methods = (il2cpp_class_get_methods_t)dlsym(handle, "il2cpp_class_get_methods");
+            auto il2cpp_method_get_name = (il2cpp_method_get_name_t)dlsym(handle, "il2cpp_method_get_name");
+
+            if (il2cpp_domain_get && il2cpp_domain_get_assemblies && il2cpp_class_get_methods) {
+                dumpedFunctions.push_back("[KittySpy] Successfully resolved real il2cpp API runtime functions.");
+                
+                void* domain = il2cpp_domain_get();
+                if (domain) {
+                    size_t size = 0;
+                    void** assemblies = il2cpp_domain_get_assemblies(domain, &size);
+                    if (assemblies && size > 0) {
+                        int dumpedClasses = 0;
+                        for (size_t i = 0; i < size; ++i) {
+                            if (dumpedClasses > 20) break;
+                            const void* image = il2cpp_assembly_get_image(assemblies[i]);
+                            if (image) {
+                                const char* imageName = il2cpp_image_get_name(image);
+                                if (imageName && std::string(imageName).find("Assembly-CSharp") != std::string::npos) {
+                                    size_t classCount = il2cpp_image_get_class_count(image);
+                                    for (size_t j = 0; j < classCount; ++j) {
+                                        const void* klass = il2cpp_image_get_class(image, j);
+                                        if (klass) {
+                                            const char* className = il2cpp_class_get_name(klass);
+                                            if (className && std::string(className) != "<Module>") {
+                                                dumpedFunctions.push_back(std::string("[Class] ") + className);
+                                                void* iter = nullptr;
+                                                while (void* method = il2cpp_class_get_methods(klass, &iter)) {
+                                                    const char* methodName = il2cpp_method_get_name(method);
+                                                    if (methodName) dumpedFunctions.push_back(std::string("  [Method] ") + methodName);
+                                                }
+                                                dumpedClasses++;
+                                                if (dumpedClasses > 20) break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (dumpedClasses == 0) {
+                            dumpedFunctions.push_back("[KittySpy] No Assembly-CSharp classes found, game might be obfuscated.");
+                        } else {
+                            dumpedFunctions.push_back("[KittySpy] ... (Output truncated to first 20 classes of Assembly-CSharp to prevent UI freeze) ...");
+                        }
+                    }
+                }
+            } else {
+                dumpedFunctions.push_back("[Error] Failed to resolve il2cpp API functions from libil2cpp.so");
+            }
+        } else {
+            dumpedFunctions.push_back("[Error] Failed to dlopen libil2cpp.so");
+        }
     } else if (ue4Base) {
         dumpedFunctions.push_back("[KittySpy] SUCCESS: Unreal Engine detected (libUE4.so).");
         std::stringstream ss;
