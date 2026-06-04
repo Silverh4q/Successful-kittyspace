@@ -109,6 +109,14 @@ Java_com_kittyspace_NativeDumper_patchMemory(
     if (!hexBytesObj) return env->NewStringUTF("Error: Invalid string references");
     const char* hexBytes = env->GetStringUTFChars(hexBytesObj, nullptr);
 
+    uintptr_t il2cppBase = KittyMemory::getLibraryBaseAddress("libil2cpp.so");
+    uintptr_t ue4Base = KittyMemory::getLibraryBaseAddress("libUE4.so");
+    
+    if (!il2cppBase && !ue4Base) {
+        env->ReleaseStringUTFChars(hexBytesObj, hexBytes);
+        return env->NewStringUTF("ERROR: GAME LIBRARY NOT LOADED YET! PLEASE WAIT...");
+    }
+
     // Real memory patch logic
     void* target_addr = (void*)(uintptr_t)address;
     
@@ -150,6 +158,13 @@ Java_com_kittyspace_NativeDumper_inlineHook(
         jstring functionSymbolObj,
         jlong offset) {
     
+    uintptr_t il2cppBase = KittyMemory::getLibraryBaseAddress("libil2cpp.so");
+    uintptr_t ue4Base = KittyMemory::getLibraryBaseAddress("libUE4.so");
+    
+    if (!il2cppBase && !ue4Base) {
+        return env->NewStringUTF("ERROR: GAME LIBRARY NOT LOADED YET! PLEASE WAIT...");
+    }
+
     std::stringstream res;
     res << "SUCCESS: Native Hook redirect deployed at 0x" << std::hex << offset << " via Kittyspace";
     return env->NewStringUTF(res.str().c_str());
@@ -166,79 +181,54 @@ Java_com_kittyspace_NativeDumper_dumpGameFunctions(
     const char* apkPath = env->GetStringUTFChars(apkPathObj, nullptr);
     
     std::string pName = packageName;
-    std::string path = apkPath;
     
-    bool isUnity = false;
-    bool isUnreal = false;
-    
-    // Quick binary scan of the APK file to check for engine signatures
-    FILE* file = fopen(path.c_str(), "rb");
-    if (file) {
-        char buffer[4096];
-        size_t bytesRead;
-        while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-            std::string chunk(buffer, bytesRead);
-            if (chunk.find("libil2cpp.so") != std::string::npos || chunk.find("global-metadata.dat") != std::string::npos) {
-                isUnity = true;
-                break;
-            } else if (chunk.find("libUE4.so") != std::string::npos || chunk.find("Unreal") != std::string::npos) {
-                isUnreal = true;
-                break;
-            }
-        }
-        fclose(file);
-    }
+    uintptr_t il2cppBase = KittyMemory::getLibraryBaseAddress("libil2cpp.so");
+    uintptr_t ue4Base = KittyMemory::getLibraryBaseAddress("libUE4.so");
     
     std::vector<std::string> dumpedFunctions;
-    dumpedFunctions.push_back("[VirtualSpace] Attaching to " + pName + " isolated container...");
     
-    if (isUnity) {
-        dumpedFunctions.push_back("[VirtualSpace] SUCCESS: Unity engine detected (libil2cpp.so).");
-        dumpedFunctions.push_back("[KittySpy] Resolving: il2cpp_domain_get, il2cpp_class_get_methods, il2cpp_method_get_name...");
+    if (!il2cppBase && !ue4Base) {
+        dumpedFunctions.push_back("[Error] GAME LIBRARY NOT LOADED YET! PLEASE WAIT...");
+        dumpedFunctions.push_back("[Error] Neither libil2cpp.so nor libUE4.so were found in memory.");
+    } else if (il2cppBase) {
+        dumpedFunctions.push_back("[KittySpy] SUCCESS: Unity engine detected (libil2cpp.so).");
+        std::stringstream ss;
+        ss << std::hex << il2cppBase;
+        dumpedFunctions.push_back("[KittySpy] libil2cpp.so Base Address: 0x" + ss.str());
         dumpedFunctions.push_back("==================================================");
-        dumpedFunctions.push_back("[Class] PlayerController");
-        dumpedFunctions.push_back("  [Method] Update() : RVA 0x12E4A0");
-        dumpedFunctions.push_back("  [Method] TakeDamage(float damage) : RVA 0x12E55C");
-        dumpedFunctions.push_back("  [Method] Jump() : RVA 0x12E660");
-        dumpedFunctions.push_back("  [Field] m_Health (float) : Offset 0x24");
-        dumpedFunctions.push_back("  [Field] m_Speed (float) : Offset 0x28");
-        dumpedFunctions.push_back("");
-        dumpedFunctions.push_back("[Class] GameManager");
-        dumpedFunctions.push_back("  [Method] Start() : RVA 0x28F010");
-        dumpedFunctions.push_back("  [Method] EndGame() : RVA 0x28F2A0");
-        dumpedFunctions.push_back("  [Method] InitializeState() : RVA 0x28F300");
-        dumpedFunctions.push_back("  [Field] m_GameScore (int) : Offset 0x4C");
-        dumpedFunctions.push_back("");
-        dumpedFunctions.push_back("[Class] WeaponLogic");
-        dumpedFunctions.push_back("  [Method] Shoot() : RVA 0x4A1000");
-        dumpedFunctions.push_back("  [Method] Reload() : RVA 0x4A1340");
-        dumpedFunctions.push_back("  [Field] m_Ammo (int) : Offset 0x10");
-        dumpedFunctions.push_back("  [Field] m_RecoilMultiplier (float) : Offset 0x14");
-    } else if (isUnreal) {
-        dumpedFunctions.push_back("[VirtualSpace] SUCCESS: Unreal Engine detected (libUE4.so).");
-        dumpedFunctions.push_back("[KittySpy] Resolving ProcessEvent, GObjects, UObject, UFunction...");
+        
+        auto maps = KittyMemory::getMemoryMaps();
+        int segments = 0;
+        for (const auto& r : maps) {
+            if (r.name.find("libil2cpp.so") != std::string::npos) {
+                std::stringstream ms;
+                ms << "  [Segment] " << std::hex << r.startAddress << " - " << r.endAddress << " [" << r.permissions << "]";
+                dumpedFunctions.push_back(ms.str());
+                segments++;
+            }
+        }
+        dumpedFunctions.push_back("[KittySpy] Found " + std::to_string(segments) + " active memory segments for Unity Engine.");
+    } else if (ue4Base) {
+        dumpedFunctions.push_back("[KittySpy] SUCCESS: Unreal Engine detected (libUE4.so).");
+        std::stringstream ss;
+        ss << std::hex << ue4Base;
+        dumpedFunctions.push_back("[KittySpy] libUE4.so Base Address: 0x" + ss.str());
         dumpedFunctions.push_back("==================================================");
-        dumpedFunctions.push_back("[UClass] APlayerStatus");
-        dumpedFunctions.push_back("  [UFunction] AddHealth(float Amount) : RVA 0x33A0000");
-        dumpedFunctions.push_back("  [UProperty] CurrentHealth (Float) : Offset 0x3B8");
-        dumpedFunctions.push_back("  [UProperty] MaxHealth (Float) : Offset 0x3BC");
-        dumpedFunctions.push_back("");
-        dumpedFunctions.push_back("[UClass] UInventoryComponent");
-        dumpedFunctions.push_back("  [UFunction] UseItem(int32 ItemID) : RVA 0x3914500");
-        dumpedFunctions.push_back("  [UFunction] DropItem(int32 ItemID) : RVA 0x3914800");
-        dumpedFunctions.push_back("  [UProperty] Coins (Int32) : Offset 0x104");
-        dumpedFunctions.push_back("");
-        dumpedFunctions.push_back("[UClass] AWeapon_Base");
-        dumpedFunctions.push_back("  [UFunction] FireWeapon() : RVA 0x4A00330");
-        dumpedFunctions.push_back("  [UProperty] Damage (Float) : Offset 0x440");
-        dumpedFunctions.push_back("  [UProperty] FireRate (Float) : Offset 0x444");
-    } else {
-        dumpedFunctions.push_back("[VirtualSpace] ERROR: Game Engine not found (Neither Unity nor Unreal).");
-        dumpedFunctions.push_back("[VirtualSpace] The targeted app does not contain libil2cpp.so or libUE4.so");
-        dumpedFunctions.push_back("[VirtualSpace] Proceeding with general native module scan... FAILED.");
+        
+        auto maps = KittyMemory::getMemoryMaps();
+        int segments = 0;
+        for (const auto& r : maps) {
+            if (r.name.find("libUE4.so") != std::string::npos) {
+                std::stringstream ms;
+                ms << "  [Segment] " << std::hex << r.startAddress << " - " << r.endAddress << " [" << r.permissions << "]";
+                dumpedFunctions.push_back(ms.str());
+                segments++;
+            }
+        }
+        dumpedFunctions.push_back("[KittySpy] Found " + std::to_string(segments) + " active memory segments for Unreal Engine.");
     }
     
-    if (isUnity || isUnreal) {
+    if (il2cppBase || ue4Base) {
         dumpedFunctions.push_back("==================================================");
         dumpedFunctions.push_back("[KittySpy] Active engine classes successfully extracted at runtime.");
     }

@@ -32,6 +32,18 @@ object KittyDumpManager {
         logs.value += "$msg\n"
     }
 
+    fun updateTimerLog(seconds: Int) {
+        val currentLogs = logs.value
+        val prevMsg = "Running for ${seconds - 1} secs..."
+        val newMsg = "Running for $seconds secs..."
+        
+        if (seconds > 1 && currentLogs.contains(prevMsg)) {
+            logs.value = currentLogs.replace(prevMsg, newMsg)
+        } else {
+            logs.value += "$newMsg\n"
+        }
+    }
+
     fun clear() {
         logs.value = ""
         dumpSuccessFile.value = null
@@ -86,6 +98,15 @@ class KittyDumpService : Service() {
 
             // Start the extraction and dump in coroutine scope
             serviceScope.launch {
+                val timerJob = launch {
+                    var secs = 1
+                    while (KittyDumpManager.isDumping.value) {
+                        kotlinx.coroutines.delay(1000)
+                        KittyDumpManager.updateTimerLog(secs)
+                        secs++
+                    }
+                }
+
                 try {
                     when (dumpType) {
                         "UNITY_SPACE" -> {
@@ -107,6 +128,7 @@ class KittyDumpService : Service() {
                 } catch (e: Exception) {
                     updateStatusFailed(e.message ?: "An unexpected error occurred during background execution.")
                 } finally {
+                    timerJob.cancel()
                     KittyDumpManager.isDumping.value = false
                     stopSelf()
                 }
