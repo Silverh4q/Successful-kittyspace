@@ -493,8 +493,34 @@ class KittySpyMenuService : Service() {
                             } else {
                                 logTerminal.append("[Error] Failed to dump game functions.\n")
                             }
-                            isInspecting = false
+                            logTerminal.append("\n==================================================\n")
+                            logTerminal.append("[KittySpy] Live Game Engine Tracing Started...\n")
                             scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+                            
+                            // Start live real-time tracing via Logcat to capture actual game logs/events
+                            Thread {
+                                var process: Process? = null
+                                try {
+                                    process = Runtime.getRuntime().exec("logcat -T 1 -v brief Unity:V UE4:V *:S")
+                                    val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
+                                    var line: String?
+                                    while (isInspecting) {
+                                        line = reader.readLine()
+                                        if (line == null) break
+                                        val finalLine = line
+                                        if (finalLine != null && finalLine.isNotBlank()) {
+                                            Handler(Looper.getMainLooper()).post {
+                                                logTerminal.append("\n[Live] $finalLine")
+                                                scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+                                            }
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                } finally {
+                                    process?.destroy()
+                                }
+                            }.start()
                         }
                     }.start()
                 }, 2000)
@@ -502,6 +528,7 @@ class KittySpyMenuService : Service() {
             
             btnClear.setOnClickListener {
                 it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
+                isInspecting = false
                 logTerminal.text = ""
             }
             

@@ -91,10 +91,12 @@ namespace KittyMemory {
         // Ensure page alignment
         size_t pageSize = sysconf(_SC_PAGESIZE);
         uintptr_t pageStart = address & ~(pageSize - 1);
+        size_t patchSize = patchBytes.size();
+        size_t mprotectSize = ((address + patchSize - pageStart + pageSize - 1) / pageSize) * pageSize;
 
         // Make page writable
-        if (mprotect((void*)pageStart, pageSize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) {
-            LOGE("Failed to set memory permissions with mprotect at 0x%lx", address);
+        if (mprotect((void*)pageStart, mprotectSize, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) {
+            LOGE("Failed to set memory permissions with mprotect at 0x%lx (size %zu)", pageStart, mprotectSize);
             return false;
         }
 
@@ -104,8 +106,11 @@ namespace KittyMemory {
             dest[i] = patchBytes[i];
         }
 
-        // Restore read/exec permissions
-        mprotect((void*)pageStart, pageSize, PROT_READ | PROT_EXEC);
+        // Flush instruction cache for ARM
+        __builtin___clear_cache((char*)address, (char*)address + patchSize);
+
+        // Restore read/exec permissions (usually PROT_READ|PROT_EXEC for code)
+        mprotect((void*)pageStart, mprotectSize, PROT_READ | PROT_EXEC);
         LOGI("Memory patched successfully at address 0x%lx", address);
         return true;
     }

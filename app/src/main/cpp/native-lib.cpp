@@ -126,8 +126,6 @@ Java_com_kittyspace_NativeDumper_patchMemory(
         target_uint += base_addr;
     }
     
-    void* target_addr = (void*)target_uint;
-    
     // Parse hex string to bytes
     std::string hex = hexBytes;
     std::vector<uint8_t> patchBytes;
@@ -140,18 +138,11 @@ Java_com_kittyspace_NativeDumper_patchMemory(
         }
     }
 
-    // Try to change memory protection and write bytes
-    size_t page_size = sysconf(_SC_PAGESIZE);
-    void* page_start = (void*)((uintptr_t)target_addr & ~(page_size - 1));
     std::stringstream res;
-    
-    if (mprotect(page_start, page_size, PROT_READ | PROT_WRITE | PROT_EXEC) == 0) {
-        memcpy(target_addr, patchBytes.data(), patchBytes.size());
-        // Flush instruction cache
-        __builtin___clear_cache((char*)target_addr, (char*)target_addr + patchBytes.size());
-        res << "SUCCESS: Bytes patched at 0x" << std::hex << address;
+    if (KittyMemory::patchMemory(target_uint, patchBytes)) {
+        res << "SUCCESS: Bytes patched at direct memory 0x" << std::hex << target_uint;
     } else {
-        res << "FAILED: Can't unprotect memory segment at 0x" << std::hex << address;
+        res << "FAILED: Can't unprotect memory segment at 0x" << std::hex << target_uint;
     }
 
     env->ReleaseStringUTFChars(hexBytesObj, hexBytes);
