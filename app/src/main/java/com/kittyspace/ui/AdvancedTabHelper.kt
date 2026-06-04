@@ -15,6 +15,8 @@ import com.kittyspace.NativeDumper
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
+import java.util.concurrent.ConcurrentHashMap
+
 object AdvancedTabHelper {
 
     private fun Int.dp(context: Context): Int = (this * context.resources.displayMetrics.density).toInt()
@@ -49,7 +51,7 @@ object AdvancedTabHelper {
         }
         
         val btnDump = Button(context).apply {
-            text = "DUMP ALL"
+            text = "CLASSES"
             setTextColor(Color.parseColor("#FFB300"))
             textSize = 10f
             setBackgroundColor(Color.parseColor("#151515"))
@@ -100,7 +102,7 @@ object AdvancedTabHelper {
 
         var isInspecting = false
         var process: Process? = null
-        val callCounts = mutableMapOf<String, Int>()
+        val callCounts = ConcurrentHashMap<String, Int>()
 
         btnInspect.setOnClickListener {
             isInspecting = !isInspecting
@@ -212,30 +214,33 @@ object AdvancedTabHelper {
                     }
                     currentClassLayout.addView(classTitle)
                     
-                    methodsContainer = LinearLayout(context).apply {
+                    val currentMethods = LinearLayout(context).apply {
                         orientation = LinearLayout.VERTICAL
                         setPadding(8.dp(context), 0, 0, 0)
                         visibility = View.GONE
                     }
-                    fieldsContainer = LinearLayout(context).apply {
+                    val currentFields = LinearLayout(context).apply {
                         orientation = LinearLayout.VERTICAL
                         setPadding(8.dp(context), 0, 0, 0)
                         visibility = View.GONE
                     }
+                    
+                    methodsContainer = currentMethods
+                    fieldsContainer = currentFields
                     
                     val divider = View(context).apply {
                         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
                         setBackgroundColor(Color.DKGRAY)
                     }
                     
-                    currentClassLayout.addView(divider)
-                    currentClassLayout.addView(methodsContainer)
-                    currentClassLayout.addView(fieldsContainer)
+                    currentClassLayout!!.addView(divider)
+                    currentClassLayout!!.addView(currentMethods)
+                    currentClassLayout!!.addView(currentFields)
                     
                     classTitle.setOnClickListener {
-                        val vis = if (methodsContainer!!.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-                        methodsContainer!!.visibility = vis
-                        fieldsContainer!!.visibility = vis
+                        val vis = if (currentMethods.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+                        currentMethods.visibility = vis
+                        currentFields.visibility = vis
                     }
                     
                     container.addView(currentClassLayout)
@@ -245,14 +250,14 @@ object AdvancedTabHelper {
             } else if (line.startsWith("  [Method] ") && currentClassLayout != null) {
                 val methodName = line.removePrefix("  [Method] ")
                 if (query.isEmpty() || classMatch || methodName.lowercase().contains(query)) {
-                    currentClassLayout.visibility = View.VISIBLE
+                    currentClassLayout!!.visibility = View.VISIBLE
                     val mtv = createInspectableItem(context, "Method: $methodName", pkg)
                     methodsContainer?.addView(mtv)
                 }
             } else if (line.startsWith("  [Field] ") && currentClassLayout != null) {
                 val fieldName = line.removePrefix("  [Field] ")
                 if (query.isEmpty() || classMatch || fieldName.lowercase().contains(query)) {
-                    currentClassLayout.visibility = View.VISIBLE
+                    currentClassLayout!!.visibility = View.VISIBLE
                     val ftv = createInspectableItem(context, "Field: $fieldName", pkg, isField = true)
                     fieldsContainer?.addView(ftv)
                 }
@@ -359,9 +364,9 @@ object AdvancedTabHelper {
         }
         root.addView(header)
         
-        btn("Contact Gmail", "mailto:l0rdsilver.703@gmail.com", Color.WHITE)
-        btn("Join Telegram", "https://t.me/greenpythonmodsLSV", Color.parseColor("#00BFFF"))
-        btn("Subscribe on YouTube", "https://youtube.com/@lordsilver77?si=AD_7tVySuNsTEmQ7", Color.RED)
+        btn("📧 Contact Gmail", "mailto:l0rdsilver.703@gmail.com", Color.WHITE)
+        btn("✈️ Join Telegram", "https://t.me/greenpythonmodsLSV", Color.parseColor("#00BFFF"))
+        btn("▶️ Subscribe on YouTube", "https://youtube.com/@lordsilver77?si=AD_7tVySuNsTEmQ7", Color.parseColor("#FF0000"))
         
         return root
     }

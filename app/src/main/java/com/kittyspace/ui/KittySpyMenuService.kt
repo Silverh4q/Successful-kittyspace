@@ -82,7 +82,7 @@ class KittySpyMenuService : Service() {
         Handler(Looper.getMainLooper()).postDelayed({
             isGameReady = true
             Toast.makeText(this, "Game Loaded. KittySpy Ready", Toast.LENGTH_LONG).show()
-        }, 12000)
+        }, 30000)
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
             val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName")).apply {
@@ -601,6 +601,9 @@ class KittySpyMenuService : Service() {
             orientation = LinearLayout.VERTICAL
             setPadding(0, 8.dp(), 0, 0)
             
+            val libInput = createInput("LIBRARY (e.g. libil2cpp.so)").apply {
+                setText("libil2cpp.so")
+            }
             val offsetInput = createInput("Offset / RVA (e.g. 0x123A4)")
             val hexInput = createInput("Hex Bytes (e.g. 1F 20 03 D5)")
             
@@ -662,15 +665,16 @@ class KittySpyMenuService : Service() {
                     layoutParams = LinearLayout.LayoutParams(0, 40.dp(), 1f).apply { rightMargin = 4.dp() }
                     setOnClickListener {
                         it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
+                        val lib = libInput.text.toString().trim()
                         val off = offsetInput.text.toString().trim()
                         val hx = hexInput.text.toString().trim()
-                        if (off.isBlank() || hx.isBlank()) Toast.makeText(context, "Error: Fill offset and hex fields", Toast.LENGTH_SHORT).show()
+                        if (lib.isBlank() || off.isBlank() || hx.isBlank()) Toast.makeText(context, "Error: Fill Library, Offset and Hex", Toast.LENGTH_SHORT).show()
                         else if (!off.startsWith("0x", true)) Toast.makeText(context, "Error: INVALID OFFSET. Must start with 0x", Toast.LENGTH_SHORT).show()
                         else if (hx.length < 2) Toast.makeText(context, "Error: INVALID HEX", Toast.LENGTH_SHORT).show()
                         else {
                             try {
                                 val address = java.lang.Long.decode(off)
-                                val res = com.kittyspace.NativeDumper.patchMemory(targetPackageName, address, hx)
+                                val res = com.kittyspace.NativeDumper.patchMemory(targetPackageName, lib, address, hx)
                                 Toast.makeText(context, "PATCHED: $res", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Error patching offset: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -688,8 +692,18 @@ class KittySpyMenuService : Service() {
                     layoutParams = LinearLayout.LayoutParams(0, 40.dp(), 1f).apply { leftMargin = 4.dp() }
                     setOnClickListener {
                         it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
-                        if (offsetInput.text.isNullOrBlank()) Toast.makeText(context, "Error: Nothing to restore", Toast.LENGTH_SHORT).show()
-                        else Toast.makeText(context, "OFFSET RESTORED", Toast.LENGTH_SHORT).show()
+                        val lib = libInput.text.toString().trim()
+                        val off = offsetInput.text.toString().trim()
+                        if (lib.isBlank() || off.isBlank()) Toast.makeText(context, "Error: Fill Library and Offset to restore", Toast.LENGTH_SHORT).show()
+                        else {
+                            try {
+                                val address = java.lang.Long.decode(off)
+                                val res = com.kittyspace.NativeDumper.restoreMemory(targetPackageName, lib, address)
+                                Toast.makeText(context, "RESTORE: $res", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Error restoring offset: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     }
                 }
                 
@@ -697,6 +711,7 @@ class KittySpyMenuService : Service() {
                 addView(btnRestore)
             }
             
+            addView(libInput)
             addView(offsetInput)
             addView(hexInput)
             addView(checkRow)

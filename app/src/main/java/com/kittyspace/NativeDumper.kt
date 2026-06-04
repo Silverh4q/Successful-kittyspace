@@ -12,8 +12,8 @@ object NativeDumper {
         }
     }
 
-    external fun patchMemory(packageName: String, address: Long, hexBytes: String): String
-    external fun restoreMemory(packageName: String, address: Long): String
+    external fun patchMemory(packageName: String, libraryName: String, address: Long, hexBytes: String): String
+    external fun restoreMemory(packageName: String, libraryName: String, address: Long): String
     external fun inlineHook(packageName: String, functionSymbol: String, offset: Long): String
     external fun invokeGameFunction(address: Long): String
     external fun dumpGameFunctions(packageName: String, apkPath: String): Array<String>

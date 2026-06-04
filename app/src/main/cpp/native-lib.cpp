@@ -109,22 +109,24 @@ Java_com_kittyspace_NativeDumper_patchMemory(
         JNIEnv* env,
         jobject /* this */,
         jstring packageNameObj,
+        jstring libraryNameObj,
         jlong address,
         jstring hexBytesObj) {
     if (!hexBytesObj) return env->NewStringUTF("Error: Invalid string references");
     const char* hexBytes = env->GetStringUTFChars(hexBytesObj, nullptr);
+    const char* libNameChars = env->GetStringUTFChars(libraryNameObj, nullptr);
+    std::string libNameStr(libNameChars);
+    env->ReleaseStringUTFChars(libraryNameObj, libNameChars);
 
-    uintptr_t il2cppBase = KittyMemory::getLibraryBaseAddress("libil2cpp.so");
-    uintptr_t ue4Base = KittyMemory::getLibraryBaseAddress("libUE4.so");
+    uintptr_t base_addr = KittyMemory::getLibraryBaseAddress(libNameStr.c_str());
     
-    if (!il2cppBase && !ue4Base) {
+    if (!base_addr) {
         env->ReleaseStringUTFChars(hexBytesObj, hexBytes);
-        return env->NewStringUTF("ERROR: GAME LIBRARY NOT LOADED YET! PLEASE WAIT...");
+        return env->NewStringUTF("ERROR: TARGET LIBRARY NOT LOADED YET!");
     }
 
     // Real memory patch logic
     uintptr_t target_uint = (uintptr_t)address;
-    uintptr_t base_addr = il2cppBase ? il2cppBase : ue4Base;
     
     if (target_uint < 0x10000000 && base_addr) {
         target_uint += base_addr;
@@ -149,7 +151,7 @@ Java_com_kittyspace_NativeDumper_patchMemory(
         std::vector<uint8_t> backupBytes(patchBytes.size());
         memcpy(backupBytes.data(), (void*)target_uint, backupBytes.size());
         originalBytesMap[target_uint] = backupBytes;
-        LOGI("Stored %zu original bytes for address 0x%lx", backupBytes.size(), target_uint);
+        LOGI("Stored %zu original bytes for address 0x%lx", backupBytes.size(), (unsigned long)target_uint);
     }
 
     if (KittyMemory::patchMemory(target_uint, patchBytes)) {
@@ -167,12 +169,15 @@ Java_com_kittyspace_NativeDumper_restoreMemory(
         JNIEnv* env,
         jobject /* this */,
         jstring packageNameObj,
+        jstring libraryNameObj,
         jlong address) {
         
-    uintptr_t il2cppBase = KittyMemory::getLibraryBaseAddress("libil2cpp.so");
-    uintptr_t ue4Base = KittyMemory::getLibraryBaseAddress("libUE4.so");
+    const char* libNameChars = env->GetStringUTFChars(libraryNameObj, nullptr);
+    std::string libNameStr(libNameChars);
+    env->ReleaseStringUTFChars(libraryNameObj, libNameChars);
+        
+    uintptr_t base_addr = KittyMemory::getLibraryBaseAddress(libNameStr.c_str());
     uintptr_t target_uint = (uintptr_t)address;
-    uintptr_t base_addr = il2cppBase ? il2cppBase : ue4Base;
     
     if (target_uint < 0x10000000 && base_addr) {
         target_uint += base_addr;
@@ -414,7 +419,7 @@ Java_com_kittyspace_NativeManager_applyPatch(
         jlong offset,
         jstring hexData) {
     const char *hex_str = env->GetStringUTFChars(hexData, nullptr);
-    LOGI("Received patch request at offset: 0x%llX with bytes: %s", offset, hex_str);
+    LOGI("Received patch request at offset: 0x%lX with bytes: %s", (long)offset, hex_str);
     
     // TODO: Implement actual memory patch logic using `mprotect` and `memcpy` on target offset.
     // Example pseudocode:
@@ -431,7 +436,7 @@ Java_com_kittyspace_NativeManager_restorePatch(
         JNIEnv* env,
         jobject /* this */,
         jlong offset) {
-    LOGI("Received restore request at offset: 0x%llX", offset);
+    LOGI("Received restore request at offset: 0x%lX", (long)offset);
     // TODO: Implement restore using saved original bytes
     return JNI_TRUE;
 }
@@ -443,7 +448,7 @@ Java_com_kittyspace_NativeManager_applyHook(
         jlong offset,
         jstring methodName) {
     const char *method_str = env->GetStringUTFChars(methodName, nullptr);
-    LOGI("Requested to hook %s at offset: 0x%llX", method_str, offset);
+    LOGI("Requested to hook %s at offset: 0x%lX", method_str, (long)offset);
     
     // TODO: Implement inline hooking, for example using DobbyHook:
     // DobbyHook((void*)(base_address + offset), (void*)MyHookedFunction, (void**)&OriginalFunction);
