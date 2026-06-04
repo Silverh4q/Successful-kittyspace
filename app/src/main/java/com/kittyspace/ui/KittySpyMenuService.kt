@@ -53,6 +53,8 @@ class KittySpyMenuService : Service() {
     private val SaveColor = Color.parseColor("#00BFFF")
     private val ErrorColor = Color.RED
 
+    private var isGameReady = false
+
     private fun Int.dp(): Int = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this.toFloat(), resources.displayMetrics).toInt()
     private fun Float.dp(): Int = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this, resources.displayMetrics).toInt()
 
@@ -76,6 +78,11 @@ class KittySpyMenuService : Service() {
     override fun onCreate() {
         super.onCreate()
         targetPackageName = this.packageName
+        
+        Handler(Looper.getMainLooper()).postDelayed({
+            isGameReady = true
+            Toast.makeText(this, "Game Loaded. KittySpy Ready", Toast.LENGTH_LONG).show()
+        }, 12000)
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
             val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName")).apply {
@@ -331,13 +338,17 @@ class KittySpyMenuService : Service() {
                 setPadding(8.dp(), 8.dp(), 8.dp(), 8.dp())
             }
             
-            val tab1 = createKittySpyTab()
+            val tab1 = AdvancedTabHelper.createKittySpyTab(this@KittySpyMenuService, this@KittySpyMenuService, targetPackageName) {
+                onFocusChange(it)
+            }
             val tab2 = createPatchTab()
             val tab3 = createHookTab()
+            val tab4 = AdvancedTabHelper.createSocialTab(this@KittySpyMenuService)
             
             contentArea.addView(tab1)
             contentArea.addView(tab2)
             contentArea.addView(tab3)
+            contentArea.addView(tab4)
             
             var currentSelectedTab: View? = null
             var currentSelectedContent: View? = null
@@ -346,13 +357,17 @@ class KittySpyMenuService : Service() {
                 return TextView(context).apply {
                     this.text = title
                     setTextColor(Color.GRAY)
-                    textSize = 12f
+                    textSize = 10f
                     typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
                     gravity = Gravity.CENTER
                     setPadding(0, 10.dp(), 0, 10.dp())
                     layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                     
                     setOnClickListener {
+                        if (!isGameReady && title != "SOCIAL") {
+                            Toast.makeText(context, "Waiting for game...", Toast.LENGTH_SHORT).show()
+                            return@setOnClickListener
+                        }
                         currentSelectedTab?.let {
                             it.background = null
                             (it as TextView).setTextColor(Color.GRAY)
@@ -371,11 +386,13 @@ class KittySpyMenuService : Service() {
             
             val t1 = createTab("KITTYSPY", tab1)
             val t2 = createTab("PATCHER", tab2)
-            val t3 = createTab("SCAN / HOOK", tab3)
+            val t3 = createTab("HOOK", tab3)
+            val t4 = createTab("SOCIAL", tab4)
             
             tabsRow.addView(t1)
             tabsRow.addView(t2)
             tabsRow.addView(t3)
+            tabsRow.addView(t4)
             
             t1.performClick()
             

@@ -7,6 +7,8 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <dlfcn.h>
+#include <unordered_map>
+#include <vector>
 
 #define LOG_TAG "KittyDumperNative"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -100,6 +102,8 @@ Java_com_kittyspace_NativeDumper_initializeVirtualLaunch(
     return env->NewStringUTF(log.str().c_str());
 }
 
+static std::unordered_map<uintptr_t, std::vector<uint8_t>> originalBytesMap;
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_kittyspace_NativeDumper_patchMemory(
         JNIEnv* env,
@@ -139,6 +143,15 @@ Java_com_kittyspace_NativeDumper_patchMemory(
     }
 
     std::stringstream res;
+    
+    // Check if we need to store original bytes
+    if (originalBytesMap.find(target_uint) == originalBytesMap.end()) {
+        std::vector<uint8_t> backupBytes(patchBytes.size());
+        memcpy(backupBytes.data(), (void*)target_uint, backupBytes.size());
+        originalBytesMap[target_uint] = backupBytes;
+        LOGI("Stored %zu original bytes for address 0x%lx", backupBytes.size(), target_uint);
+    }
+
     if (KittyMemory::patchMemory(target_uint, patchBytes)) {
         res << "SUCCESS: Bytes patched at direct memory 0x" << std::hex << target_uint;
     } else {
@@ -147,6 +160,64 @@ Java_com_kittyspace_NativeDumper_patchMemory(
 
     env->ReleaseStringUTFChars(hexBytesObj, hexBytes);
     return env->NewStringUTF(res.str().c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_kittyspace_NativeDumper_restoreMemory(
+        JNIEnv* env,
+        jobject /* this */,
+        jstring packageNameObj,
+        jlong address) {
+        
+    uintptr_t il2cppBase = KittyMemory::getLibraryBaseAddress("libil2cpp.so");
+    uintptr_t ue4Base = KittyMemory::getLibraryBaseAddress("libUE4.so");
+    uintptr_t target_uint = (uintptr_t)address;
+    uintptr_t base_addr = il2cppBase ? il2cppBase : ue4Base;
+    
+    if (target_uint < 0x10000000 && base_addr) {
+        target_uint += base_addr;
+    }
+    
+    std::stringstream res;
+    if (originalBytesMap.find(target_uint) != originalBytesMap.end()) {
+        std::vector<uint8_t> origBytes = originalBytesMap[target_uint];
+        if (KittyMemory::patchMemory(target_uint, origBytes)) {
+            res << "SUCCESS: Restored original bytes at 0x" << std::hex << target_uint;
+            originalBytesMap.erase(target_uint);
+        } else {
+            res << "FAILED: Could not write original bytes to 0x" << std::hex << target_uint;
+        }
+    } else {
+        res << "FAILED: No original bytes backed up for 0x" << std::hex << target_uint;
+    }
+    return env->NewStringUTF(res.str().c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_kittyspace_NativeDumper_invokeGameFunction(
+        JNIEnv* env,
+        jobject /* this */,
+        jlong address) {
+        
+    uintptr_t il2cppBase = KittyMemory::getLibraryBaseAddress("libil2cpp.so");
+    uintptr_t ue4Base = KittyMemory::getLibraryBaseAddress("libUE4.so");
+    uintptr_t target_uint = (uintptr_t)address;
+    uintptr_t base_addr = il2cppBase ? il2cppBase : ue4Base;
+    
+    if (target_uint < 0x10000000 && base_addr) {
+        target_uint += base_addr;
+    }
+    
+    // VERY simplistic game function invoke! DANGER: Can crash if it requires arguments.
+    // We try to call it as void(*)() which works for simple things like jump() or reload()
+    try {
+        typedef void (*simple_func_t)();
+        simple_func_t func = (simple_func_t)target_uint;
+        func();
+        return env->NewStringUTF("Function Invoked (May crash if it needs args)");
+    } catch (...) {
+        return env->NewStringUTF("Invoke Exception");
+    }
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -235,6 +306,12 @@ Java_com_kittyspace_NativeDumper_dumpGameFunctions(
             auto il2cpp_class_get_name = (il2cpp_class_get_name_t)dlsym(handle, "il2cpp_class_get_name");
             auto il2cpp_class_get_methods = (il2cpp_class_get_methods_t)dlsym(handle, "il2cpp_class_get_methods");
             auto il2cpp_method_get_name = (il2cpp_method_get_name_t)dlsym(handle, "il2cpp_method_get_name");
+            typedef void* (*il2cpp_class_get_fields_t)(const void* klass, void** iter);
+            typedef const char* (*il2cpp_field_get_name_t)(const void* field);
+            typedef size_t (*il2cpp_field_get_offset_t)(const void* field);
+            auto il2cpp_class_get_fields = (il2cpp_class_get_fields_t)dlsym(handle, "il2cpp_class_get_fields");
+            auto il2cpp_field_get_name = (il2cpp_field_get_name_t)dlsym(handle, "il2cpp_field_get_name");
+            auto il2cpp_field_get_offset = (il2cpp_field_get_offset_t)dlsym(handle, "il2cpp_field_get_offset");
 
             if (il2cpp_domain_get && il2cpp_domain_get_assemblies && il2cpp_class_get_methods) {
                 dumpedFunctions.push_back("[KittySpy] Successfully resolved real il2cpp API runtime functions.");
@@ -246,7 +323,6 @@ Java_com_kittyspace_NativeDumper_dumpGameFunctions(
                     if (assemblies && size > 0) {
                         int dumpedClasses = 0;
                         for (size_t i = 0; i < size; ++i) {
-                            if (dumpedClasses > 20) break;
                             const void* image = il2cpp_assembly_get_image(assemblies[i]);
                             if (image) {
                                 const char* imageName = il2cpp_image_get_name(image);
@@ -263,8 +339,17 @@ Java_com_kittyspace_NativeDumper_dumpGameFunctions(
                                                     const char* methodName = il2cpp_method_get_name(method);
                                                     if (methodName) dumpedFunctions.push_back(std::string("  [Method] ") + methodName);
                                                 }
+                                                void* fIter = nullptr;
+                                                if (il2cpp_class_get_fields && il2cpp_field_get_name) {
+                                                    while (void* field = il2cpp_class_get_fields(klass, &fIter)) {
+                                                        const char* fieldName = il2cpp_field_get_name(field);
+                                                        size_t offset = il2cpp_field_get_offset ? il2cpp_field_get_offset(field) : 0;
+                                                        std::stringstream fss;
+                                                        fss << "  [Field] " << (fieldName ?: "Unknown") << " : Offset 0x" << std::hex << offset;
+                                                        dumpedFunctions.push_back(fss.str());
+                                                    }
+                                                }
                                                 dumpedClasses++;
-                                                if (dumpedClasses > 20) break;
                                             }
                                         }
                                     }
@@ -274,7 +359,7 @@ Java_com_kittyspace_NativeDumper_dumpGameFunctions(
                         if (dumpedClasses == 0) {
                             dumpedFunctions.push_back("[KittySpy] No Assembly-CSharp classes found, game might be obfuscated.");
                         } else {
-                            dumpedFunctions.push_back("[KittySpy] ... (Output truncated to first 20 classes of Assembly-CSharp to prevent UI freeze) ...");
+                            dumpedFunctions.push_back("[KittySpy] Dumped " + std::to_string(dumpedClasses) + " runtime classes.");
                         }
                     }
                 }
