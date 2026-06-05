@@ -198,11 +198,25 @@ Java_com_kittyspace_NativeDumper_restoreMemory(
     return env->NewStringUTF(res.str().c_str());
 }
 
+extern "C" JNIEXPORT jint JNICALL
+Java_com_kittyspace_NativeDumper_getEngineType(
+        JNIEnv* env,
+        jobject /* this */) {
+    if (KittyMemory::getLibraryBaseAddress("libil2cpp.so")) {
+        return 0; // UNITY
+    } else if (KittyMemory::getLibraryBaseAddress("libUE4.so")) {
+        return 1; // UNREAL
+    }
+    return 2; // UNKNOWN
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_kittyspace_NativeDumper_invokeGameFunction(
         JNIEnv* env,
         jobject /* this */,
-        jlong address) {
+        jlong address,
+        jstring paramTypeObj,
+        jstring paramValueObj) {
         
     uintptr_t il2cppBase = KittyMemory::getLibraryBaseAddress("libil2cpp.so");
     uintptr_t ue4Base = KittyMemory::getLibraryBaseAddress("libUE4.so");
@@ -214,12 +228,28 @@ Java_com_kittyspace_NativeDumper_invokeGameFunction(
     }
     
     // VERY simplistic game function invoke! DANGER: Can crash if it requires arguments.
-    // We try to call it as void(*)() which works for simple things like jump() or reload()
+    // Assuming simple void(*)() for now if paramType is empty, else parse
+    const char* paramType = env->GetStringUTFChars(paramTypeObj, nullptr);
+    const char* paramValue = env->GetStringUTFChars(paramValueObj, nullptr);
+    std::string pt(paramType);
+    std::string pv(paramValue);
+    env->ReleaseStringUTFChars(paramTypeObj, paramType);
+    env->ReleaseStringUTFChars(paramValueObj, paramValue);
+
     try {
-        typedef void (*simple_func_t)();
-        simple_func_t func = (simple_func_t)target_uint;
-        func();
-        return env->NewStringUTF("Function Invoked (May crash if it needs args)");
+        if (pt.empty()) {
+            typedef void (*simple_func_t)();
+            simple_func_t func = (simple_func_t)target_uint;
+            func();
+            return env->NewStringUTF("Function Invoked (No args)");
+        } else if (pt == "int") {
+            int arg = std::stoi(pv);
+            typedef void (*int_func_t)(int);
+            int_func_t func = (int_func_t)target_uint;
+            func(arg);
+            return env->NewStringUTF("Function Invoked (int arg)");
+        }
+        return env->NewStringUTF("Unsupported param type");
     } catch (...) {
         return env->NewStringUTF("Invoke Exception");
     }
@@ -311,6 +341,10 @@ Java_com_kittyspace_NativeDumper_dumpGameFunctions(
             auto il2cpp_class_get_name = (il2cpp_class_get_name_t)dlsym(handle, "il2cpp_class_get_name");
             auto il2cpp_class_get_methods = (il2cpp_class_get_methods_t)dlsym(handle, "il2cpp_class_get_methods");
             auto il2cpp_method_get_name = (il2cpp_method_get_name_t)dlsym(handle, "il2cpp_method_get_name");
+            
+            typedef uint32_t (*il2cpp_method_get_param_count_t)(const void* method);
+            auto il2cpp_method_get_param_count = (il2cpp_method_get_param_count_t)dlsym(handle, "il2cpp_method_get_param_count");
+
             typedef void* (*il2cpp_class_get_fields_t)(const void* klass, void** iter);
             typedef const char* (*il2cpp_field_get_name_t)(const void* field);
             typedef size_t (*il2cpp_field_get_offset_t)(const void* field);
@@ -342,7 +376,17 @@ Java_com_kittyspace_NativeDumper_dumpGameFunctions(
                                                 void* iter = nullptr;
                                                 while (void* method = il2cpp_class_get_methods(klass, &iter)) {
                                                     const char* methodName = il2cpp_method_get_name(method);
-                                                    if (methodName) dumpedFunctions.push_back(std::string("  [Method] ") + methodName);
+                                                    uint32_t pCount = il2cpp_method_get_param_count ? il2cpp_method_get_param_count(method) : 0;
+                                                    if (methodName) {
+                                                        std::stringstream mss;
+                                                        mss << "  [Method] " << methodName << " : ParamCount " << pCount;
+                                                        
+                                                        // NOTE: RVA extraction normally requires reading methodPointer or il2cpp struct offsets.
+                                                        // Example stub for RVA/Offset to be parsed later (currently mocked 0x0)
+                                                        mss << " : RVA 0x0 : Offset 0x0";
+                                                        
+                                                        dumpedFunctions.push_back(mss.str());
+                                                    }
                                                 }
                                                 void* fIter = nullptr;
                                                 if (il2cpp_class_get_fields && il2cpp_field_get_name) {
@@ -455,4 +499,23 @@ Java_com_kittyspace_NativeManager_applyHook(
 
     env->ReleaseStringUTFChars(methodName, method_str);
     return JNI_TRUE;
+}
+
+std::vector<std::string> g_hookEvents;
+
+extern "C" JNIEXPORT jobjectArray JNICALL
+Java_com_kittyspace_NativeDumper_pollHookEvents(
+        JNIEnv* env,
+        jobject /* this */) {
+    jclass stringClass = env->FindClass("java/lang/String");
+    if (g_hookEvents.empty()) {
+        return env->NewObjectArray(0, stringClass, nullptr);
+    }
+    
+    jobjectArray strArray = env->NewObjectArray(g_hookEvents.size(), stringClass, nullptr);
+    for (size_t i = 0; i < g_hookEvents.size(); ++i) {
+        env->SetObjectArrayElement(strArray, i, env->NewStringUTF(g_hookEvents[i].c_str()));
+    }
+    g_hookEvents.clear(); // Clear after polling
+    return strArray;
 }

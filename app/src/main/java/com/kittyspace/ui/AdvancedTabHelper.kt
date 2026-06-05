@@ -3,6 +3,10 @@ package com.kittyspace.ui
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
@@ -145,30 +149,26 @@ object AdvancedTabHelper {
                 handler.post(updateRunnable)
                 
                 Thread {
-                    try {
-                        process = Runtime.getRuntime().exec("logcat -v brief Unity:V UE4:V *:S")
-                        val reader = BufferedReader(InputStreamReader(process!!.inputStream))
-                        var line: String?
-                        while (isInspecting) {
-                            line = reader.readLine()
-                            if (line == null) break
-                            if (!isPaused && line.isNotBlank()) {
-                                if (line.contains("Update") || line.contains("FixedUpdate") || line.contains("LateUpdate")) continue
-                                val msg = line.substringAfter("): ", line).substringAfter("] ", line).trim()
-                                if (msg.length > 5) {
+                    while (isInspecting) {
+                        try {
+                            if (!isPaused) {
+                                val events = NativeDumper.pollHookEvents()
+                                for (e in events) {
                                     val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
-                                    logEvents.add("[$time] Event Detected:\n-> $msg\n─────────────────────")
+                                    logEvents.add("[$time] Event Detected:\n-> $e\n─────────────────────")
                                     if (logEvents.size > 200) logEvents.removeAt(0)
                                 }
                             }
+                            Thread.sleep(500)
+                        } catch (e: Exception) {
+                            Thread.sleep(1000)
                         }
-                    } catch (e: Exception) {}
+                    }
                 }.start()
             } else {
                 inspectorContainer.visibility = View.GONE
                 browserContainer.visibility = View.VISIBLE
                 btnInspect.alpha = 1f
-                process?.destroy()
                 handler.removeCallbacks(updateRunnable)
             }
         }
@@ -180,6 +180,20 @@ object AdvancedTabHelper {
         btnClear.setOnClickListener {
             logEvents.clear()
             inspectorLog.text = ""
+        }
+        
+        val btnSaveLog = Button(context).apply { text = "SAVE LOG"; textSize = 8f; setBackgroundColor(Color.DKGRAY); setTextColor(Color.WHITE) }
+        inspectorToolbar.addView(btnSaveLog)
+        btnSaveLog.setOnClickListener {
+            try {
+                val dir = java.io.File(android.os.Environment.getExternalStorageDirectory(), "KITTYSPY-INSPECTOR")
+                if (!dir.exists()) dir.mkdirs()
+                val f = java.io.File(dir, "RuntimeKittyspy.py")
+                f.writeText(logEvents.joinToString("\n"))
+                Toast.makeText(context, "Log saved to: ${f.absolutePath}", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to save: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
 
         var fullDump = mutableListOf<String>()
@@ -215,28 +229,59 @@ object AdvancedTabHelper {
         return root
     }
 
+    private var renderJob: kotlinx.coroutines.Job? = null
+
     private fun renderClasses(context: Context, container: LinearLayout, data: List<String>, filter: String, pkg: String) {
-        container.removeAllViews()
-        val query = filter.lowercase()
-
-        var currentClassLayout: LinearLayout? = null
-        var classMatch = false
-        
-        var methodsContainer: LinearLayout? = null
-        var fieldsContainer: LinearLayout? = null
-        
-        var itemsAdded = 0
-
-        for (line in data) {
-            if (line.startsWith("[Class] ")) {
-                val className = line.removePrefix("[Class] ")
-                classMatch = query.isEmpty() || className.lowercase().contains(query)
+        renderJob?.cancel()
+        renderJob = CoroutineScope(Dispatchers.Main).launch {
+            val query = filter.lowercase()
+            
+            val filteredNodes = withContext(Dispatchers.IO) {
+                val result = mutableListOf<String>()
+                var classStr = ""
+                var classMatched = false
+                var classAdded = false
+                var itemsAddedNum = 0
                 
-                if (classMatch || query.isNotEmpty()) {
+                for (line in data) {
+                    if (line.startsWith("[Class] ")) {
+                        classStr = line
+                        classMatched = query.isEmpty() || line.removePrefix("[Class] ").lowercase().contains(query)
+                        classAdded = false
+                        if (classMatched) {
+                            result.add(line)
+                            classAdded = true
+                            itemsAddedNum++
+                        }
+                    } else if (line.startsWith("  [Method] ") || line.startsWith("  [Field] ")) {
+                        val valName = line.substringAfter("] ")
+                        if (query.isEmpty() || classMatched || valName.lowercase().contains(query)) {
+                            if (!classAdded) {
+                                result.add(classStr)
+                                classAdded = true
+                                itemsAddedNum++
+                            }
+                            result.add(line)
+                        }
+                    }
+                    if (itemsAddedNum > 150 && query.isEmpty()) break
+                }
+                result
+            }
+            
+            container.removeAllViews()
+            
+            var currentClassLayout: LinearLayout? = null
+            var methodsContainer: LinearLayout? = null
+            var fieldsContainer: LinearLayout? = null
+            var itemsAdded = 0
+
+            for (line in filteredNodes) {
+                if (line.startsWith("[Class] ")) {
+                    val className = line.removePrefix("[Class] ")
                     currentClassLayout = LinearLayout(context).apply {
                         orientation = LinearLayout.VERTICAL
                         setPadding(0, 4.dp(context), 0, 4.dp(context))
-                        visibility = if (classMatch) View.VISIBLE else View.GONE
                     }
                     
                     val classTitle = TextView(context).apply {
@@ -274,27 +319,22 @@ object AdvancedTabHelper {
                     
                     container.addView(currentClassLayout)
                     itemsAdded++
-                    if (itemsAdded > 150 && query.isEmpty()) break // Prevent lag if no filter
-                }
-            } else if (line.startsWith("  [Method] ") && currentClassLayout != null) {
-                val methodName = line.removePrefix("  [Method] ")
-                if (query.isEmpty() || classMatch || methodName.lowercase().contains(query)) {
+                } else if (line.startsWith("  [Method] ") && currentClassLayout != null) {
+                    val methodName = line.removePrefix("  [Method] ")
                     currentClassLayout!!.visibility = View.VISIBLE
                     val mtv = createInspectableItem(context, "Method: $methodName", pkg)
                     methodsContainer?.addView(mtv)
-                }
-            } else if (line.startsWith("  [Field] ") && currentClassLayout != null) {
-                val fieldName = line.removePrefix("  [Field] ")
-                if (query.isEmpty() || classMatch || fieldName.lowercase().contains(query)) {
+                } else if (line.startsWith("  [Field] ") && currentClassLayout != null) {
+                    val fieldName = line.removePrefix("  [Field] ")
                     currentClassLayout!!.visibility = View.VISIBLE
                     val ftv = createInspectableItem(context, "Field: $fieldName", pkg, isField = true)
                     fieldsContainer?.addView(ftv)
                 }
             }
-        }
-        
-        if (itemsAdded == 0) {
-            container.addView(TextView(context).apply { text = "No results found."; setTextColor(Color.GRAY) })
+            
+            if (itemsAdded == 0) {
+                container.addView(TextView(context).apply { text = "No results found."; setTextColor(Color.GRAY) })
+            }
         }
     }
 
@@ -309,14 +349,22 @@ object AdvancedTabHelper {
             setPadding(0, 4.dp(context), 0, 4.dp(context))
         }
         
+        val actionRowScroll = HorizontalScrollView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            visibility = View.GONE
+        }
         val actionRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            visibility = View.GONE
             setPadding(8.dp(context), 0, 0, 4.dp(context))
         }
+        actionRowScroll.addView(actionRow)
         
         var extOffset: Long? = null
+        var pCount = 0
+        if (text.contains("ParamCount")) {
+            try { pCount = text.substringAfter("ParamCount ").substringBefore(" ").toInt() } catch(e:Exception){}
+        }
         if (text.contains("Offset 0x") || text.contains("RVA 0x")) {
             try {
                 val hexStr = text.substringAfter("0x").substringBefore(" ").trim()
@@ -333,7 +381,7 @@ object AdvancedTabHelper {
             layoutParams = LinearLayout.LayoutParams(60.dp(context), ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = 8.dp(context) }
             setPadding(4.dp(context), 4.dp(context), 4.dp(context), 4.dp(context))
             setBackgroundColor(Color.parseColor("#222222"))
-            visibility = if (isField) View.GONE else View.VISIBLE
+            visibility = if (isField || pCount == 0) View.GONE else View.VISIBLE
         }
 
         fun addBtn(name: String, col: Int, action: ()->Unit) {
@@ -351,9 +399,9 @@ object AdvancedTabHelper {
 
         addBtn("Call", Color.parseColor("#00BFFF")) {
             if (extOffset != null) {
-                // In a real hooking engine, you'd pass the param to NativeDumper natively.
                 val param = paramInput.text.toString().trim()
-                val res = NativeDumper.invokeGameFunction(extOffset)
+                val pType = if (param.isNotEmpty()) "int" else ""
+                val res = NativeDumper.invokeGameFunction(extOffset, pType, param)
                 Toast.makeText(context, "$res (Param: ${if(param.isEmpty()) "None" else param})", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(context, "No address found to call", Toast.LENGTH_SHORT).show()
@@ -365,13 +413,31 @@ object AdvancedTabHelper {
         addBtn("Inspect", Color.parseColor("#FFB300")) {
             Toast.makeText(context, "Inspecting $text", Toast.LENGTH_SHORT).show()
         }
+        
+        if (!isField && extOffset != null) {
+            addBtn("Copy RVA", Color.LTGRAY) {
+                val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clip.setPrimaryClip(android.content.ClipData.newPlainText("RVA", "0x" + java.lang.Long.toHexString(extOffset!!)))
+                Toast.makeText(context, "RVA Copied", Toast.LENGTH_SHORT).show()
+            }
+            addBtn("Copy Offset", Color.LTGRAY) {
+                val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clip.setPrimaryClip(android.content.ClipData.newPlainText("Offset", "0x" + java.lang.Long.toHexString(extOffset!!)))
+                Toast.makeText(context, "Offset Copied", Toast.LENGTH_SHORT).show()
+            }
+            addBtn("Copy Address", Color.LTGRAY) {
+                val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clip.setPrimaryClip(android.content.ClipData.newPlainText("Address", "0x" + java.lang.Long.toHexString(extOffset!!)))
+                Toast.makeText(context, "Address Copied", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         tv.setOnClickListener {
-            actionRow.visibility = if (actionRow.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+            actionRowScroll.visibility = if (actionRowScroll.visibility == View.VISIBLE) View.GONE else View.VISIBLE
         }
         
         root.addView(tv)
-        root.addView(actionRow)
+        root.addView(actionRowScroll)
         return root
     }
 
