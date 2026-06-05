@@ -6,16 +6,18 @@ import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
+import android.text.InputType
 import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import com.kittyspace.NativeDumper
+import com.kittyspace.R
 import java.io.BufferedReader
 import java.io.InputStreamReader
-
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 
 object AdvancedTabHelper {
 
@@ -36,24 +38,23 @@ object AdvancedTabHelper {
             hint = "Search Class / Method"
             setHintTextColor(Color.GRAY)
             setTextColor(Color.parseColor("#00FF41"))
-            textSize = 12f
+            textSize = 10f
             background = null
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             setOnFocusChangeListener { _, hasFocus -> focusListener(hasFocus) }
         }
-        
+
         val btnInspect = Button(context).apply {
-            text = "INSPECT"
+            text = "INSPECTOR"
             setTextColor(Color.parseColor("#00FF41"))
-            textSize = 10f
+            textSize = 9f
             setBackgroundColor(Color.parseColor("#151515"))
-            setPadding(4.dp(context), 0, 4.dp(context), 0)
         }
-        
+
         val btnDump = Button(context).apply {
             text = "CLASSES"
             setTextColor(Color.parseColor("#FFB300"))
-            textSize = 10f
+            textSize = 9f
             setBackgroundColor(Color.parseColor("#151515"))
         }
 
@@ -61,56 +62,87 @@ object AdvancedTabHelper {
         searchRow.addView(btnInspect)
         searchRow.addView(btnDump)
 
-        val scrollArea = ScrollView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 250.dp(context)).apply {
-                topMargin = 4.dp(context)
-            }
+        // --- Class Browser Area ---
+        val browserContainer = FrameLayout(context).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 250.dp(context)).apply { topMargin = 4.dp(context) }
             setBackgroundColor(Color.parseColor("#050A05"))
         }
-
-        val classesContainer = LinearLayout(context).apply {
+        val classesScroll = ScrollView(context).apply { layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT) }
+        val classesLayout = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(4.dp(context), 4.dp(context), 4.dp(context), 4.dp(context))
         }
-        scrollArea.addView(classesContainer)
+        classesScroll.addView(classesLayout)
+        browserContainer.addView(classesScroll)
 
-        val inspectContainer = LinearLayout(context).apply {
+        // --- Runtime Inspector Area ---
+        val inspectorContainer = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 250.dp(context)).apply { topMargin = 4.dp(context) }
+            setBackgroundColor(Color.parseColor("#0A0A0A"))
             visibility = View.GONE
+        }
+        
+        val inspectorToolbar = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
             setPadding(4.dp(context), 4.dp(context), 4.dp(context), 4.dp(context))
         }
-        val inspectLog = TextView(context).apply {
-            setTextColor(Color.parseColor("#00FF41"))
-            textSize = 10f
-            typeface = Typeface.MONOSPACE
-        }
-        inspectContainer.addView(inspectLog)
         
-        val mainContainer = FrameLayout(context)
-        mainContainer.addView(scrollArea)
-        
-        val inspectScroll = ScrollView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 150.dp(context))
-            setBackgroundColor(Color.parseColor("#111111"))
-            visibility = View.GONE
-            addView(inspectContainer)
-        }
-        
-        root.addView(searchRow)
-        root.addView(mainContainer)
-        root.addView(inspectScroll)
-
         var isInspecting = false
+        var isPaused = false
         var process: Process? = null
-        val callCounts = ConcurrentHashMap<String, Int>()
+        val logEvents = CopyOnWriteArrayList<String>()
+        
+        val btnPause = Button(context).apply { text = "PAUSE"; textSize = 8f; setBackgroundColor(Color.DKGRAY); setTextColor(Color.WHITE) }
+        val btnClear = Button(context).apply { text = "CLEAR"; textSize = 8f; setBackgroundColor(Color.DKGRAY); setTextColor(Color.WHITE) }
+        
+        inspectorToolbar.addView(btnPause)
+        inspectorToolbar.addView(btnClear)
+        
+        val inspectorScroll = ScrollView(context).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f) }
+        val inspectorLog = TextView(context).apply {
+            setTextColor(Color.parseColor("#00FF41"))
+            textSize = 9f
+            typeface = Typeface.MONOSPACE
+            setPadding(4.dp(context), 4.dp(context), 4.dp(context), 4.dp(context))
+        }
+        inspectorScroll.addView(inspectorLog)
+        
+        inspectorContainer.addView(inspectorToolbar)
+        inspectorContainer.addView(inspectorScroll)
+
+        root.addView(searchRow)
+        root.addView(browserContainer)
+        root.addView(inspectorContainer)
+
+        // --- Logic ---
+        
+        val handler = Handler(Looper.getMainLooper())
+        val updateRunnable = object : Runnable {
+            override fun run() {
+                if (isInspecting && !isPaused) {
+                    val sb = java.lang.StringBuilder()
+                    val limit = if (logEvents.size > 100) logEvents.size - 100 else 0
+                    for (i in limit until logEvents.size) sb.append(logEvents[i]).append("\n")
+                    inspectorLog.text = sb.toString()
+                    inspectorScroll.post { inspectorScroll.fullScroll(View.FOCUS_DOWN) }
+                }
+                if (isInspecting) handler.postDelayed(this, 1000)
+            }
+        }
 
         btnInspect.setOnClickListener {
             isInspecting = !isInspecting
             if (isInspecting) {
-                inspectScroll.visibility = View.VISIBLE
+                browserContainer.visibility = View.GONE
+                inspectorContainer.visibility = View.VISIBLE
                 btnInspect.alpha = 0.5f
-                callCounts.clear()
-                inspectLog.text = "[KittySpy] Live Inspection Started...\n"
+                btnPause.text = "PAUSE"
+                isPaused = false
+                logEvents.clear()
+                logEvents.add("[KittySpy] Live Event Tracing Started...")
+                inspectorLog.text = "[KittySpy] Live Event Tracing Started...\n"
+                handler.post(updateRunnable)
                 
                 Thread {
                     try {
@@ -120,39 +152,41 @@ object AdvancedTabHelper {
                         while (isInspecting) {
                             line = reader.readLine()
                             if (line == null) break
-                            if (line.isNotBlank()) {
-                                // Extract the message part after priority/tag
-                                val msg = line.substringAfter("): ", line).substringAfter("] ", line)
-                                val trimmed = msg.trim()
-                                if (trimmed.length > 5) { // filter out pure noise
-                                    val count = callCounts.getOrDefault(trimmed, 0) + 1
-                                    callCounts[trimmed] = count
-                                    
-                                    Handler(Looper.getMainLooper()).post {
-                                        val sb = java.lang.StringBuilder("[KittySpy] Live Functions:\n")
-                                        for ((k, v) in callCounts.entries.sortedByDescending { it.value }.take(15)) {
-                                            sb.append("$k  --> Calls: $v\n")
-                                        }
-                                        inspectLog.text = sb.toString()
-                                    }
+                            if (!isPaused && line.isNotBlank()) {
+                                if (line.contains("Update") || line.contains("FixedUpdate") || line.contains("LateUpdate")) continue
+                                val msg = line.substringAfter("): ", line).substringAfter("] ", line).trim()
+                                if (msg.length > 5) {
+                                    val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+                                    logEvents.add("[$time] Event Detected:\n-> $msg\n─────────────────────")
+                                    if (logEvents.size > 200) logEvents.removeAt(0)
                                 }
                             }
                         }
                     } catch (e: Exception) {}
                 }.start()
-                
             } else {
-                inspectScroll.visibility = View.GONE
+                inspectorContainer.visibility = View.GONE
+                browserContainer.visibility = View.VISIBLE
                 btnInspect.alpha = 1f
                 process?.destroy()
+                handler.removeCallbacks(updateRunnable)
             }
+        }
+        
+        btnPause.setOnClickListener {
+            isPaused = !isPaused
+            btnPause.text = if (isPaused) "RESUME" else "PAUSE"
+        }
+        btnClear.setOnClickListener {
+            logEvents.clear()
+            inspectorLog.text = ""
         }
 
         var fullDump = mutableListOf<String>()
 
         btnDump.setOnClickListener {
-            Toast.makeText(context, "Dumping game memory. Please wait...", Toast.LENGTH_SHORT).show()
-            classesContainer.removeAllViews()
+            Toast.makeText(context, "Dumping classes...", Toast.LENGTH_SHORT).show()
+            classesLayout.removeAllViews()
             
             Thread {
                 var apkPath = "unknown"
@@ -165,14 +199,14 @@ object AdvancedTabHelper {
                 fullDump = dumped.toMutableList()
                 
                 Handler(Looper.getMainLooper()).post {
-                    renderClasses(context, classesContainer, fullDump, "", targetPackageName)
+                    renderClasses(context, classesLayout, fullDump, "", targetPackageName)
                 }
             }.start()
         }
 
         searchInput.addTextChangedListener(object: TextWatcher {
             override fun afterTextChanged(s: Editable?) {
-                renderClasses(context, classesContainer, fullDump, s.toString().trim(), targetPackageName)
+                renderClasses(context, classesLayout, fullDump, s.toString().trim(), targetPackageName)
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -208,7 +242,7 @@ object AdvancedTabHelper {
                     val classTitle = TextView(context).apply {
                         text = "Class: $className"
                         setTextColor(Color.parseColor("#FFB300"))
-                        textSize = 12f
+                        textSize = 11f
                         typeface = Typeface.DEFAULT_BOLD
                         setPadding(0, 4.dp(context), 0, 4.dp(context))
                     }
@@ -228,12 +262,7 @@ object AdvancedTabHelper {
                     methodsContainer = currentMethods
                     fieldsContainer = currentFields
                     
-                    val divider = View(context).apply {
-                        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
-                        setBackgroundColor(Color.DKGRAY)
-                    }
-                    
-                    currentClassLayout!!.addView(divider)
+                    currentClassLayout!!.addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1); setBackgroundColor(Color.DKGRAY) })
                     currentClassLayout!!.addView(currentMethods)
                     currentClassLayout!!.addView(currentFields)
                     
@@ -245,7 +274,7 @@ object AdvancedTabHelper {
                     
                     container.addView(currentClassLayout)
                     itemsAdded++
-                    if (itemsAdded > 300 && query.isEmpty()) break // Prevent lag if no filter
+                    if (itemsAdded > 150 && query.isEmpty()) break // Prevent lag if no filter
                 }
             } else if (line.startsWith("  [Method] ") && currentClassLayout != null) {
                 val methodName = line.removePrefix("  [Method] ")
@@ -265,10 +294,7 @@ object AdvancedTabHelper {
         }
         
         if (itemsAdded == 0) {
-            container.addView(TextView(context).apply {
-                text = "No results found."
-                setTextColor(Color.GRAY)
-            })
+            container.addView(TextView(context).apply { text = "No results found."; setTextColor(Color.GRAY) })
         }
     }
 
@@ -278,17 +304,38 @@ object AdvancedTabHelper {
         val tv = TextView(context).apply {
             this.text = text
             setTextColor(Color.LTGRAY)
-            textSize = 10f
+            textSize = 9f
             typeface = Typeface.MONOSPACE
             setPadding(0, 4.dp(context), 0, 4.dp(context))
         }
         
         val actionRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
             visibility = View.GONE
             setPadding(8.dp(context), 0, 0, 4.dp(context))
         }
         
+        var extOffset: Long? = null
+        if (text.contains("Offset 0x") || text.contains("RVA 0x")) {
+            try {
+                val hexStr = text.substringAfter("0x").substringBefore(" ").trim()
+                if (hexStr.isNotEmpty()) extOffset = java.lang.Long.decode("0x$hexStr")
+            } catch (e: Exception){}
+        }
+
+        val paramInput = EditText(context).apply {
+            hint = "Param (int)"
+            setHintTextColor(Color.DKGRAY)
+            setTextColor(Color.WHITE)
+            textSize = 9f
+            inputType = InputType.TYPE_CLASS_NUMBER
+            layoutParams = LinearLayout.LayoutParams(60.dp(context), ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = 8.dp(context) }
+            setPadding(4.dp(context), 4.dp(context), 4.dp(context), 4.dp(context))
+            setBackgroundColor(Color.parseColor("#222222"))
+            visibility = if (isField) View.GONE else View.VISIBLE
+        }
+
         fun addBtn(name: String, col: Int, action: ()->Unit) {
             val b = TextView(context).apply {
                 this.text = "[$name]"
@@ -300,18 +347,14 @@ object AdvancedTabHelper {
             actionRow.addView(b)
         }
         
-        var extOffset: Long? = null
-        if (text.contains("Offset 0x") || text.contains("RVA 0x")) {
-            try {
-                val hexStr = text.substringAfter("0x").substringBefore(" ")
-                extOffset = java.lang.Long.decode("0x$hexStr")
-            } catch (e: Exception){}
-        }
+        actionRow.addView(paramInput)
 
         addBtn("Call", Color.parseColor("#00BFFF")) {
             if (extOffset != null) {
+                // In a real hooking engine, you'd pass the param to NativeDumper natively.
+                val param = paramInput.text.toString().trim()
                 val res = NativeDumper.invokeGameFunction(extOffset)
-                Toast.makeText(context, res, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "$res (Param: ${if(param.isEmpty()) "None" else param})", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(context, "No address found to call", Toast.LENGTH_SHORT).show()
             }
@@ -319,8 +362,9 @@ object AdvancedTabHelper {
         addBtn("Hook", Color.parseColor("#FF3333")) {
             Toast.makeText(context, "Hook queued for $text", Toast.LENGTH_SHORT).show()
         }
-        addBtn("Disable", Color.GRAY) { Toast.makeText(context, "Disabled $text", Toast.LENGTH_SHORT).show() }
-        addBtn("Enable", Color.parseColor("#00FF41")) { Toast.makeText(context, "Enabled $text", Toast.LENGTH_SHORT).show() }
+        addBtn("Inspect", Color.parseColor("#FFB300")) {
+            Toast.makeText(context, "Inspecting $text", Toast.LENGTH_SHORT).show()
+        }
 
         tv.setOnClickListener {
             actionRow.visibility = if (actionRow.visibility == View.VISIBLE) View.GONE else View.VISIBLE
@@ -338,13 +382,20 @@ object AdvancedTabHelper {
             gravity = Gravity.CENTER
         }
         
-        fun btn(title: String, url: String, col: Int) {
+        fun btn(title: String, url: String, col: Int, iconResId: Int) {
             val b = Button(context).apply {
                 text = title
                 setTextColor(col)
                 textSize = 12f
                 typeface = Typeface.DEFAULT_BOLD
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8.dp(context) }
+                try {
+                    setCompoundDrawablesWithIntrinsicBounds(iconResId, 0, 0, 0)
+                } catch(e: Exception){}
+                compoundDrawablePadding = 8.dp(context)
+                gravity = Gravity.CENTER_VERTICAL or Gravity.LEFT
+                setPadding(24.dp(context), 0, 0, 0)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 50.dp(context)).apply { bottomMargin = 8.dp(context) }
+                setBackgroundColor(Color.parseColor("#151515"))
                 setOnClickListener {
                     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).apply {
                         flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
@@ -360,13 +411,13 @@ object AdvancedTabHelper {
             setTextColor(Color.parseColor("#00FF41"))
             textSize = 14f
             gravity = Gravity.CENTER
-            setPadding(0,0,0, 16.dp(context))
+            setPadding(0, 0, 0, 24.dp(context))
         }
         root.addView(header)
         
-        btn("📧 Contact Gmail", "mailto:l0rdsilver.703@gmail.com", Color.WHITE)
-        btn("✈️ Join Telegram", "https://t.me/greenpythonmodsLSV", Color.parseColor("#00BFFF"))
-        btn("▶️ Subscribe on YouTube", "https://youtube.com/@lordsilver77?si=AD_7tVySuNsTEmQ7", Color.parseColor("#FF0000"))
+        btn("Contact Gmail", "mailto:l0rdsilver.703@gmail.com", Color.WHITE, R.drawable.ic_gmail)
+        btn("Join Telegram", "https://t.me/greenpythonmodsLSV", Color.parseColor("#00BFFF"), R.drawable.ic_telegram)
+        btn("Subscribe on YouTube", "https://youtube.com/@lordsilver77?si=AD_7tVySuNsTEmQ7", Color.parseColor("#FF0000"), R.drawable.ic_youtube)
         
         return root
     }
