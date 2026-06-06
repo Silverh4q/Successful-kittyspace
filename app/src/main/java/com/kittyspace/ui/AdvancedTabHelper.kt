@@ -23,9 +23,23 @@ import java.io.InputStreamReader
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
+data class CachedMethod(
+    val lineStr: String,
+    val methodName: String,
+    val isField: Boolean
+)
+
+data class CachedClass(
+    val lineStr: String,
+    val className: String,
+    val items: MutableList<CachedMethod> = mutableListOf()
+)
+
 object AdvancedTabHelper {
 
     private fun Int.dp(context: Context): Int = (this * context.resources.displayMetrics.density).toInt()
+
+    private var runtimeCache = mutableListOf<CachedClass>()
 
     fun createKittySpyTab(context: Context, service: KittySpyMenuService, targetPackageName: String, focusListener: (Boolean) -> Unit): View {
         val root = LinearLayout(context).apply {
@@ -199,7 +213,7 @@ object AdvancedTabHelper {
         var fullDump = mutableListOf<String>()
 
         btnDump.setOnClickListener {
-            Toast.makeText(context, "Dumping classes...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Building Runtime Cache...", Toast.LENGTH_SHORT).show()
             classesLayout.removeAllViews()
             
             Thread {
@@ -210,17 +224,41 @@ object AdvancedTabHelper {
                 } catch (e: Exception) {}
                 
                 val dumped = NativeDumper.dumpGameFunctions(targetPackageName, apkPath)
-                fullDump = dumped.toMutableList()
+                
+                val tempCache = mutableListOf<CachedClass>()
+                var currentClass: CachedClass? = null
+                
+                for (line in dumped) {
+                    if (line.startsWith("[Class] ")) {
+                        val className = line.removePrefix("[Class] ")
+                        currentClass = CachedClass(line, className)
+                        tempCache.add(currentClass)
+                    } else if (line.startsWith("  [Method] ") && currentClass != null) {
+                        currentClass.items.add(CachedMethod(line, line.substringAfter("] "), false))
+                    } else if (line.startsWith("  [Field] ") && currentClass != null) {
+                        currentClass.items.add(CachedMethod(line, line.substringAfter("] "), true))
+                    }
+                }
+                
+                runtimeCache = tempCache
                 
                 Handler(Looper.getMainLooper()).post {
-                    renderClasses(context, classesLayout, fullDump, "", targetPackageName)
+                    Toast.makeText(context, "Cache Ready! ${runtimeCache.size} classes loaded.", Toast.LENGTH_SHORT).show()
+                    renderClasses(context, classesLayout, "", targetPackageName, focusListener)
                 }
             }.start()
         }
 
+        var searchRunnable: Runnable? = null
+        val handlerSearch = Handler(Looper.getMainLooper())
+
         searchInput.addTextChangedListener(object: TextWatcher {
             override fun afterTextChanged(s: Editable?) {
-                renderClasses(context, classesLayout, fullDump, s.toString().trim(), targetPackageName)
+                searchRunnable?.let { handlerSearch.removeCallbacks(it) }
+                searchRunnable = Runnable {
+                    renderClasses(context, classesLayout, s.toString().trim(), targetPackageName, focusListener)
+                }
+                handlerSearch.postDelayed(searchRunnable!!, 300)
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -231,40 +269,42 @@ object AdvancedTabHelper {
 
     private var renderJob: kotlinx.coroutines.Job? = null
 
-    private fun renderClasses(context: Context, container: LinearLayout, data: List<String>, filter: String, pkg: String) {
+    private fun renderClasses(context: Context, container: LinearLayout, filter: String, pkg: String, focusListener: (Boolean) -> Unit) {
         renderJob?.cancel()
         renderJob = CoroutineScope(Dispatchers.Main).launch {
             val query = filter.lowercase()
             
+            if (runtimeCache.isEmpty()) {
+                container.removeAllViews()
+                container.addView(TextView(context).apply { text = "Click CLASSES to load cache."; setTextColor(Color.GRAY) })
+                return@launch
+            }
+            
             val filteredNodes = withContext(Dispatchers.IO) {
                 val result = mutableListOf<String>()
-                var classStr = ""
-                var classMatched = false
-                var classAdded = false
                 var itemsAddedNum = 0
                 
-                for (line in data) {
-                    if (line.startsWith("[Class] ")) {
-                        classStr = line
-                        classMatched = query.isEmpty() || line.removePrefix("[Class] ").lowercase().contains(query)
-                        classAdded = false
-                        if (classMatched) {
-                            result.add(line)
-                            classAdded = true
-                            itemsAddedNum++
-                        }
-                    } else if (line.startsWith("  [Method] ") || line.startsWith("  [Field] ")) {
-                        val valName = line.substringAfter("] ")
-                        if (query.isEmpty() || classMatched || valName.lowercase().contains(query)) {
-                            if (!classAdded) {
-                                result.add(classStr)
-                                classAdded = true
+                for (cls in runtimeCache) {
+                    val classMatch = query.isEmpty() || cls.className.lowercase().contains(query)
+                    var addedClass = false
+                    
+                    if (classMatch) {
+                        result.add(cls.lineStr)
+                        addedClass = true
+                        itemsAddedNum++
+                    }
+                    
+                    for (item in cls.items) {
+                        if (query.isEmpty() || classMatch || item.methodName.lowercase().contains(query)) {
+                            if (!addedClass) {
+                                result.add(cls.lineStr)
+                                addedClass = true
                                 itemsAddedNum++
                             }
-                            result.add(line)
+                            result.add(item.lineStr)
                         }
                     }
-                    if (itemsAddedNum > 150 && query.isEmpty()) break
+                    if (itemsAddedNum > 100 && query.isEmpty()) break
                 }
                 result
             }
@@ -322,12 +362,12 @@ object AdvancedTabHelper {
                 } else if (line.startsWith("  [Method] ") && currentClassLayout != null) {
                     val methodName = line.removePrefix("  [Method] ")
                     currentClassLayout!!.visibility = View.VISIBLE
-                    val mtv = createInspectableItem(context, "Method: $methodName", pkg)
+                    val mtv = createInspectableItem(context, "Method: $methodName", pkg, false, focusListener)
                     methodsContainer?.addView(mtv)
                 } else if (line.startsWith("  [Field] ") && currentClassLayout != null) {
                     val fieldName = line.removePrefix("  [Field] ")
                     currentClassLayout!!.visibility = View.VISIBLE
-                    val ftv = createInspectableItem(context, "Field: $fieldName", pkg, isField = true)
+                    val ftv = createInspectableItem(context, "Field: $fieldName", pkg, true, focusListener)
                     fieldsContainer?.addView(ftv)
                 }
             }
@@ -338,7 +378,7 @@ object AdvancedTabHelper {
         }
     }
 
-    private fun createInspectableItem(context: Context, text: String, pkg: String, isField: Boolean = false): View {
+    private fun createInspectableItem(context: Context, text: String, pkg: String, isField: Boolean = false, focusListener: (Boolean) -> Unit): View {
         val root = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         
         val tv = TextView(context).apply {
@@ -382,6 +422,7 @@ object AdvancedTabHelper {
             setPadding(4.dp(context), 4.dp(context), 4.dp(context), 4.dp(context))
             setBackgroundColor(Color.parseColor("#222222"))
             visibility = if (isField || pCount == 0) View.GONE else View.VISIBLE
+            setOnFocusChangeListener { _, hasFocus -> focusListener(hasFocus) }
         }
 
         fun addBtn(name: String, col: Int, action: ()->Unit) {
@@ -406,12 +447,6 @@ object AdvancedTabHelper {
             } else {
                 Toast.makeText(context, "No address found to call", Toast.LENGTH_SHORT).show()
             }
-        }
-        addBtn("Hook", Color.parseColor("#FF3333")) {
-            Toast.makeText(context, "Hook queued for $text", Toast.LENGTH_SHORT).show()
-        }
-        addBtn("Inspect", Color.parseColor("#FFB300")) {
-            Toast.makeText(context, "Inspecting $text", Toast.LENGTH_SHORT).show()
         }
         
         if (!isField && extOffset != null) {
@@ -449,19 +484,13 @@ object AdvancedTabHelper {
         }
         
         fun btn(title: String, url: String, col: Int, iconResId: Int) {
-            val b = Button(context).apply {
-                text = title
-                setTextColor(col)
-                textSize = 12f
-                typeface = Typeface.DEFAULT_BOLD
-                try {
-                    setCompoundDrawablesWithIntrinsicBounds(iconResId, 0, 0, 0)
-                } catch(e: Exception){}
-                compoundDrawablePadding = 8.dp(context)
-                gravity = Gravity.CENTER_VERTICAL or Gravity.LEFT
-                setPadding(24.dp(context), 0, 0, 0)
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 50.dp(context)).apply { bottomMargin = 8.dp(context) }
                 setBackgroundColor(Color.parseColor("#151515"))
+                setPadding(24.dp(context), 0, 0, 0)
+                isClickable = true
                 setOnClickListener {
                     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).apply {
                         flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
@@ -469,7 +498,24 @@ object AdvancedTabHelper {
                     try { context.startActivity(intent) } catch (e: Exception){}
                 }
             }
-            root.addView(b)
+
+            val icon = ImageView(context).apply {
+                layoutParams = LinearLayout.LayoutParams(24.dp(context), 24.dp(context)).apply { rightMargin = 16.dp(context) }
+                try {
+                    setImageResource(iconResId)
+                } catch (e: Exception) {}
+            }
+
+            val textV = TextView(context).apply {
+                text = title
+                setTextColor(col)
+                textSize = 12f
+                typeface = Typeface.DEFAULT_BOLD
+            }
+
+            row.addView(icon)
+            row.addView(textV)
+            root.addView(row)
         }
         
         val header = TextView(context).apply {
