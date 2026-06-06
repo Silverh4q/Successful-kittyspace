@@ -449,6 +449,26 @@ object AdvancedTabHelper {
             }
         }
         
+        if (!isField) {
+            addBtn("Hook", Color.parseColor("#FF3333")) {
+                if (extOffset != null) {
+                    val methodName = text.substringAfter("Method: ").substringBefore(" :")
+                    val res = NativeDumper.inlineHook(pkg, methodName, extOffset)
+                    Toast.makeText(context, res, Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Cannot Hook without RVA/Offset", Toast.LENGTH_SHORT).show()
+                }
+            }
+            
+            addBtn("Inspect", Color.parseColor("#FFB300")) {
+                // Show metadata as toast to prevent blocking logic
+                val methodName = text.substringAfter("Method: ").substringBefore(" :")
+                val rvaStr = if (extOffset != null) "\nRVA: 0x${java.lang.Long.toHexString(extOffset!!)}" else ""
+                val msg = "Class/Context: $pkg\nMethod: $methodName$rvaStr\nParameters: $pCount"
+                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+            }
+        }
+        
         if (!isField && extOffset != null) {
             addBtn("Copy RVA", Color.LTGRAY) {
                 val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
@@ -482,6 +502,14 @@ object AdvancedTabHelper {
             setPadding(16.dp(context), 16.dp(context), 16.dp(context), 16.dp(context))
             gravity = Gravity.CENTER
         }
+        
+        val logoImage = ImageView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(96.dp(context), 96.dp(context)).apply { bottomMargin = 16.dp(context); gravity = Gravity.CENTER }
+            try {
+                setImageResource(R.mipmap.ic_launcher)
+            } catch (e: Exception) {}
+        }
+        root.addView(logoImage)
         
         fun btn(title: String, url: String, col: Int, iconResId: Int) {
             val row = LinearLayout(context).apply {
