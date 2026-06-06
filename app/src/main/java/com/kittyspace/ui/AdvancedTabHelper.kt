@@ -75,10 +75,18 @@ object AdvancedTabHelper {
             textSize = 9f
             setBackgroundColor(Color.parseColor("#151515"))
         }
+        
+        val btnSave = Button(context).apply {
+            text = "SAVE"
+            setTextColor(Color.WHITE)
+            textSize = 9f
+            setBackgroundColor(Color.parseColor("#151515"))
+        }
 
         searchRow.addView(searchInput)
         searchRow.addView(btnInspect)
         searchRow.addView(btnDump)
+        searchRow.addView(btnSave)
 
         // --- Class Browser Area ---
         val browserContainer = FrameLayout(context).apply {
@@ -109,7 +117,6 @@ object AdvancedTabHelper {
         var isInspecting = false
         var isPaused = false
         var process: Process? = null
-        val logEvents = CopyOnWriteArrayList<String>()
         
         val btnPause = Button(context).apply { text = "PAUSE"; textSize = 8f; setBackgroundColor(Color.DKGRAY); setTextColor(Color.WHITE) }
         val btnClear = Button(context).apply { text = "CLEAR"; textSize = 8f; setBackgroundColor(Color.DKGRAY); setTextColor(Color.WHITE) }
@@ -136,19 +143,7 @@ object AdvancedTabHelper {
         // --- Logic ---
         
         val handler = Handler(Looper.getMainLooper())
-        val updateRunnable = object : Runnable {
-            override fun run() {
-                if (isInspecting && !isPaused) {
-                    val sb = java.lang.StringBuilder()
-                    val limit = if (logEvents.size > 100) logEvents.size - 100 else 0
-                    for (i in limit until logEvents.size) sb.append(logEvents[i]).append("\n")
-                    inspectorLog.text = sb.toString()
-                    inspectorScroll.post { inspectorScroll.fullScroll(View.FOCUS_DOWN) }
-                }
-                if (isInspecting) handler.postDelayed(this, 1000)
-            }
-        }
-
+        
         btnInspect.setOnClickListener {
             isInspecting = !isInspecting
             if (isInspecting) {
@@ -157,23 +152,27 @@ object AdvancedTabHelper {
                 btnInspect.alpha = 0.5f
                 btnPause.text = "PAUSE"
                 isPaused = false
-                logEvents.clear()
-                logEvents.add("[KittySpy] Live Event Tracing Started...")
                 inspectorLog.text = "[KittySpy] Live Event Tracing Started...\n"
-                handler.post(updateRunnable)
                 
                 Thread {
                     while (isInspecting) {
                         try {
                             if (!isPaused) {
                                 val events = NativeDumper.pollHookEvents()
+                                val sb = java.lang.StringBuilder()
+                                sb.append("[KittySpy] Active Watcher \n\n")
                                 for (e in events) {
-                                    val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
-                                    logEvents.add("[$time] Event Detected:\n-> $e\n─────────────────────")
-                                    if (logEvents.size > 200) logEvents.removeAt(0)
+                                    val parts = e.split("|")
+                                    if (parts.size == 2) {
+                                        sb.append("Method: ").append(parts[0]).append("\n")
+                                        sb.append("Calls:   ").append(parts[1]).append("\n─────────────────────\n")
+                                    }
+                                }
+                                Handler(Looper.getMainLooper()).post {
+                                    inspectorLog.text = sb.toString()
                                 }
                             }
-                            Thread.sleep(500)
+                            Thread.sleep(1000)
                         } catch (e: Exception) {
                             Thread.sleep(1000)
                         }
@@ -183,7 +182,6 @@ object AdvancedTabHelper {
                 inspectorContainer.visibility = View.GONE
                 browserContainer.visibility = View.VISIBLE
                 btnInspect.alpha = 1f
-                handler.removeCallbacks(updateRunnable)
             }
         }
         
@@ -192,7 +190,6 @@ object AdvancedTabHelper {
             btnPause.text = if (isPaused) "RESUME" else "PAUSE"
         }
         btnClear.setOnClickListener {
-            logEvents.clear()
             inspectorLog.text = ""
         }
         
@@ -202,8 +199,8 @@ object AdvancedTabHelper {
             try {
                 val dir = java.io.File(android.os.Environment.getExternalStorageDirectory(), "KITTYSPY-INSPECTOR")
                 if (!dir.exists()) dir.mkdirs()
-                val f = java.io.File(dir, "RuntimeKittyspy.py")
-                f.writeText(logEvents.joinToString("\n"))
+                val f = java.io.File(dir, "RuntimeKittyspy.txt")
+                f.writeText(inspectorLog.text.toString())
                 Toast.makeText(context, "Log saved to: ${f.absolutePath}", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(context, "Failed to save: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -212,6 +209,29 @@ object AdvancedTabHelper {
 
         var fullDump = mutableListOf<String>()
 
+        btnSave.setOnClickListener {
+            if (runtimeCache.isEmpty()) {
+                Toast.makeText(context, "Cache is empty! Click CLASSES to load first.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            try {
+                val dir = java.io.File(android.os.Environment.getExternalStorageDirectory(), "KITTYSPY-CLASSES")
+                if (!dir.exists()) dir.mkdirs()
+                val f = java.io.File(dir, "LoadedClasses.txt")
+                val sb = StringBuilder()
+                for (c in runtimeCache) {
+                    sb.append(c.lineStr).append("\n")
+                    for (i in c.items) {
+                        sb.append(i.lineStr).append("\n")
+                    }
+                }
+                f.writeText(sb.toString())
+                Toast.makeText(context, "Saved ${runtimeCache.size} classes to: ${f.absolutePath}", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to save: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+        
         btnDump.setOnClickListener {
             Toast.makeText(context, "Building Runtime Cache...", Toast.LENGTH_SHORT).show()
             classesLayout.removeAllViews()
@@ -383,7 +403,11 @@ object AdvancedTabHelper {
         
         val tv = TextView(context).apply {
             this.text = text
-            setTextColor(Color.LTGRAY)
+            if (!isField) {
+                setTextColor(Color.parseColor("#00FF00")) // Green for methods
+            } else {
+                setTextColor(Color.LTGRAY)
+            }
             textSize = 9f
             typeface = Typeface.MONOSPACE
             setPadding(0, 4.dp(context), 0, 4.dp(context))
@@ -502,14 +526,6 @@ object AdvancedTabHelper {
             setPadding(16.dp(context), 16.dp(context), 16.dp(context), 16.dp(context))
             gravity = Gravity.CENTER
         }
-        
-        val logoImage = ImageView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(96.dp(context), 96.dp(context)).apply { bottomMargin = 16.dp(context); gravity = Gravity.CENTER }
-            try {
-                setImageResource(R.mipmap.ic_launcher)
-            } catch (e: Exception) {}
-        }
-        root.addView(logoImage)
         
         fun btn(title: String, url: String, col: Int, iconResId: Int) {
             val row = LinearLayout(context).apply {

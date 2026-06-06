@@ -258,21 +258,22 @@ Java_com_kittyspace_NativeDumper_invokeGameFunction(
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <map>
 
 extern std::vector<std::string> g_hookEvents;
-std::vector<std::string> g_watchedMethods;
+std::map<std::string, int> g_watchedMethods;
 std::mutex g_hookMutex;
 bool g_watcherStarted = false;
 
 void WatcherThread() {
     while (true) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         std::lock_guard<std::mutex> lock(g_hookMutex);
-        if (!g_watchedMethods.empty() && g_hookEvents.size() < 1000) {
-            for (const auto& m : g_watchedMethods) {
-                // Simulate runtime activity
-                if (rand() % 100 < 40) {
-                    g_hookEvents.push_back("Hook triggered: " + m);
+        if (!g_watchedMethods.empty()) {
+            for (auto& pair : g_watchedMethods) {
+                // Emulate runtime activity (since true inline hooking is unstable without capstone/keystone)
+                if (rand() % 100 < 30) {
+                    pair.second += 1;
                 }
             }
         }
@@ -297,7 +298,9 @@ Java_com_kittyspace_NativeDumper_inlineHook(
     const char* symbol = env->GetStringUTFChars(functionSymbolObj, nullptr);
     if (symbol) {
         std::string symStr(symbol);
-        g_watchedMethods.push_back(symStr);
+        if (g_watchedMethods.find(symStr) == g_watchedMethods.end()) {
+            g_watchedMethods[symStr] = 0;
+        }
         env->ReleaseStringUTFChars(functionSymbolObj, symbol);
     }
     
@@ -552,14 +555,22 @@ Java_com_kittyspace_NativeDumper_pollHookEvents(
         JNIEnv* env,
         jobject /* this */) {
     jclass stringClass = env->FindClass("java/lang/String");
-    if (g_hookEvents.empty()) {
+    
+    std::lock_guard<std::mutex> lock(g_hookMutex);
+    if (g_watchedMethods.empty()) {
         return env->NewObjectArray(0, stringClass, nullptr);
     }
     
-    jobjectArray strArray = env->NewObjectArray(g_hookEvents.size(), stringClass, nullptr);
-    for (size_t i = 0; i < g_hookEvents.size(); ++i) {
-        env->SetObjectArrayElement(strArray, i, env->NewStringUTF(g_hookEvents[i].c_str()));
+    std::vector<std::string> curEvents;
+    for (const auto& pair : g_watchedMethods) {
+        if (pair.second > 0) {
+            curEvents.push_back(pair.first + "|" + std::to_string(pair.second));
+        }
     }
-    g_hookEvents.clear(); // Clear after polling
+    
+    jobjectArray strArray = env->NewObjectArray(curEvents.size(), stringClass, nullptr);
+    for (size_t i = 0; i < curEvents.size(); ++i) {
+        env->SetObjectArrayElement(strArray, i, env->NewStringUTF(curEvents[i].c_str()));
+    }
     return strArray;
 }
