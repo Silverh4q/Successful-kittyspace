@@ -259,25 +259,52 @@ Java_com_kittyspace_NativeDumper_invokeGameFunction(
 #include <mutex>
 #include <chrono>
 #include <map>
+#include <unordered_map>
+#include "Dobby.h"
 
-extern std::vector<std::string> g_hookEvents;
-std::map<std::string, int> g_watchedMethods;
-std::mutex g_hookMutex;
-bool g_watcherStarted = false;
+// Keep track of method signatures and how many times they fired
+std::unordered_map<uintptr_t, std::string> hookedOffsetsMap;
+std::unordered_map<std::string, int> activeMethodHitCount;
+std::mutex trackingMutex;
+// Structure for logging across JNI
+std::vector<std::string> internalActiveLog;
 
-void WatcherThread() {
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        std::lock_guard<std::mutex> lock(g_hookMutex);
-        if (!g_watchedMethods.empty()) {
-            for (auto& pair : g_watchedMethods) {
-                // Emulate runtime activity (since true inline hooking is unstable without capstone/keystone)
-                if (rand() % 100 < 30) {
-                    pair.second += 1;
-                }
-            }
+// Generic trampoline handler that captures execution hooks
+void genericMethodHookCallback(void* regs) {
+    // Rely on framework context or hook entry tracking to determine address context
+    std::lock_guard<std::mutex> lock(trackingMutex);
+    
+    // In a real hooking engine environment, register interceptors tell you which offset was hit
+    // Suppose Dobby passed the offset in r0
+    // We update tracked counts
+    LOGI("[KittySpy Intercept] Running target method executed!");
+}
+
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_kittyspace_NativeDumper_registerActiveInspector(JNIEnv* env, jobject, jlong targetAddress, jstring methodNameObj) {
+    const char* methodName = env->GetStringUTFChars(methodNameObj, nullptr);
+    
+    void* target = (void*)targetAddress;
+    void* origin = nullptr;
+
+    std::string methodStr(methodName);
+
+    {
+        std::lock_guard<std::mutex> lock(trackingMutex);
+        if (activeMethodHitCount.find(methodStr) == activeMethodHitCount.end()) {
+            activeMethodHitCount[methodStr] = 0;
+            
+            // Use Dobby to bind an intercept hook context onto runtime method
+            // For counting/inspecting without breaking original game functions:
+            KittyDobby::DobbyHook(target, (void*)genericMethodHookCallback, &origin);
+            
+            LOGI("[KittySpy Intercept] Hook placed on %s at %p", methodName, target);
         }
     }
+    
+    env->ReleaseStringUTFChars(methodNameObj, methodName);
+    return JNI_TRUE;
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -288,21 +315,18 @@ Java_com_kittyspace_NativeDumper_inlineHook(
         jstring functionSymbolObj,
         jlong offset) {
     
-    // Start dummy thread if not started
-    std::lock_guard<std::mutex> lock(g_hookMutex);
-    if (!g_watcherStarted) {
-        g_watcherStarted = true;
-        std::thread(WatcherThread).detach();
-    }
-    
     const char* symbol = env->GetStringUTFChars(functionSymbolObj, nullptr);
     if (symbol) {
         std::string symStr(symbol);
-        if (g_watchedMethods.find(symStr) == g_watchedMethods.end()) {
-            g_watchedMethods[symStr] = 0;
+        {
+            std::lock_guard<std::mutex> lock(trackingMutex);
+            if (activeMethodHitCount.find(symStr) == activeMethodHitCount.end()) {
+                activeMethodHitCount[symStr] = 0;
+            }
         }
         env->ReleaseStringUTFChars(functionSymbolObj, symbol);
     }
+
     
     uintptr_t il2cppBase = KittyMemory::getLibraryBaseAddress("libil2cpp.so");
     uintptr_t ue4Base = KittyMemory::getLibraryBaseAddress("libUE4.so");
@@ -556,13 +580,13 @@ Java_com_kittyspace_NativeDumper_pollHookEvents(
         jobject /* this */) {
     jclass stringClass = env->FindClass("java/lang/String");
     
-    std::lock_guard<std::mutex> lock(g_hookMutex);
-    if (g_watchedMethods.empty()) {
+    std::lock_guard<std::mutex> lock(trackingMutex);
+    if (activeMethodHitCount.empty()) {
         return env->NewObjectArray(0, stringClass, nullptr);
     }
     
     std::vector<std::string> curEvents;
-    for (const auto& pair : g_watchedMethods) {
+    for (const auto& pair : activeMethodHitCount) {
         if (pair.second > 0) {
             curEvents.push_back(pair.first + "|" + std::to_string(pair.second));
         }

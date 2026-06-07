@@ -37,5 +37,6 @@ object NativeDumper {
     external fun verifyGlobalMetadataHeader(filePath: String): Boolean
     external fun initializeVirtualLaunch(packageName: String, appName: String): String
     
+    external fun registerActiveInspector(targetAddress: Long, methodName: String): Boolean
     external fun pollHookEvents(): Array<String>
 }

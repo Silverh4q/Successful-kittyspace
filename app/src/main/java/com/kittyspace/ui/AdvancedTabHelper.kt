@@ -56,7 +56,7 @@ object AdvancedTabHelper {
 
         // --- Header ---
         val headerText = TextView(context).apply {
-            text = "-----------------------------------\nKITTYSPY RUNTIME BROWSER V2\n-----------------------------------"
+            text = "-----------------------------------\nKITTYSPY\n-----------------------------------"
             setTextColor(Color.parseColor("#00FF41"))
             textSize = 11f
             typeface = Typeface.MONOSPACE
@@ -65,6 +65,26 @@ object AdvancedTabHelper {
         }
         root.addView(headerText)
         
+        val splitPane = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+        }
+        root.addView(splitPane)
+        
+        val leftPane = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)
+            setPadding(0, 0, 4.dp(context), 0)
+        }
+        splitPane.addView(leftPane)
+        
+        val rightPane = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.5f)
+            setPadding(4.dp(context), 0, 0, 0)
+        }
+        splitPane.addView(rightPane)
+        
         val statsText = TextView(context).apply {
             setTextColor(Color.LTGRAY)
             textSize = 10f
@@ -72,16 +92,16 @@ object AdvancedTabHelper {
             setPadding(0, 0, 0, 8.dp(context))
             text = "ENGINE:\n$engineDetected\n\nSTATUS:\n$isConnected\n\nCLASSES:\n${runtimeCache.size}\n\nMETHODS:\n$methodCount\n\nFIELDS:\n$fieldCount\n-----------------------------------"
         }
-        root.addView(statsText)
+        leftPane.addView(statsText)
 
         val actionsRow = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
             setPadding(0, 0, 0, 8.dp(context))
         }
 
         val btnLoad = Button(context).apply {
-            text = "LOAD CACHE"
+            text = "LOAD CLASSES"
             setTextColor(Color.parseColor("#FFB300"))
             textSize = 9f
             setBackgroundColor(Color.parseColor("#151515"))
@@ -95,10 +115,10 @@ object AdvancedTabHelper {
 
         actionsRow.addView(btnLoad)
         actionsRow.addView(btnSave)
-        root.addView(actionsRow)
+        leftPane.addView(actionsRow)
 
         val searchInput = EditText(context).apply {
-            hint = "Search CACHE (Instant)"
+            hint = "Search (Instant)"
             setHintTextColor(Color.DKGRAY)
             setTextColor(Color.parseColor("#00FF41"))
             textSize = 10f
@@ -107,35 +127,35 @@ object AdvancedTabHelper {
             setOnFocusChangeListener { _, hasFocus -> focusListener(hasFocus) }
             setBackgroundColor(Color.parseColor("#111111"))
         }
-        root.addView(searchInput)
+        leftPane.addView(searchInput)
         
         val titleList = TextView(context).apply {
             text = "[CLASS LIST]"
             setTextColor(Color.parseColor("#00FF41"))
             textSize = 10f
             typeface = Typeface.MONOSPACE
-            setPadding(0, 8.dp(context), 0, 8.dp(context))
+            setPadding(0, 0, 0, 8.dp(context))
         }
-        root.addView(titleList)
+        rightPane.addView(titleList)
 
         val contentScroll = ScrollView(context).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
-            setPadding(0, 8.dp(context), 0, 0)
+            setPadding(0, 0, 0, 8.dp(context))
         }
         val contentLayout = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
         }
         contentScroll.addView(contentLayout)
-        root.addView(contentScroll)
+        rightPane.addView(contentScroll)
         
         val consoleLog = TextView(context).apply {
             setTextColor(Color.parseColor("#00FF41"))
             textSize = 8f
             typeface = Typeface.MONOSPACE
-            setPadding(0, 8.dp(context), 0, 0)
-            text = "KITTYSPY LOGS\n-----------------------------------\n[INFO] Waiting for user action..."
+            setPadding(0, 0, 0, 0)
+            text = "KITTYSPY LOGS\n-----------------------------------\n[INFO] Waiting for action..."
         }
-        root.addView(consoleLog)
+        rightPane.addView(consoleLog)
         
         fun appendLog(msg: String) {
             Handler(Looper.getMainLooper()).post {
@@ -323,8 +343,8 @@ object AdvancedTabHelper {
                         itemsAddedNum += 1
                     }
                     
-                    // Instant limit
-                    if (itemsAddedNum > 100 && query.isEmpty()) break
+                    // Instant limit to prevent UI freezing
+                    if (itemsAddedNum > 50) break
                 }
                 result
             }
@@ -446,7 +466,9 @@ object AdvancedTabHelper {
             }
             
             btn("Watch") {
-                NativeDumper.inlineHook(pkg, item.methodName, 0) // Initiates watch monitor conceptually
+                var addr = 0L
+                try { addr = item.offset.toLong(16) } catch(e:Exception){}
+                NativeDumper.registerActiveInspector(addr, item.methodName) 
                 item.isWatched = true
                 Toast.makeText(context, "Added to Watched Methods", Toast.LENGTH_SHORT).show()
             }
