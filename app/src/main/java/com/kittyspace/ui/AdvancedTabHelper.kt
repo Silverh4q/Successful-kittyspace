@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
@@ -18,6 +19,7 @@ import android.view.ViewGroup
 import android.widget.*
 import com.kittyspace.NativeDumper
 import com.kittyspace.R
+import android.content.Intent
 import java.util.concurrent.CopyOnWriteArrayList
 
 data class CachedMethod(
@@ -46,6 +48,8 @@ object AdvancedTabHelper {
     private var isConnected = "Disconnected"
     private var methodCount = 0
     private var fieldCount = 0
+    
+    private val scope = CoroutineScope(Dispatchers.Main)
 
     fun createKittySpyTab(context: Context, service: KittySpyMenuService, targetPackageName: String, focusListener: (Boolean) -> Unit): View {
         val root = LinearLayout(context).apply {
@@ -56,163 +60,226 @@ object AdvancedTabHelper {
 
         // --- Header ---
         val headerText = TextView(context).apply {
-            text = "-----------------------------------\nKITTYSPY\n-----------------------------------"
+            text = "-----------------------------------\nKITTYSPY RUNTIME V2\n-----------------------------------"
             setTextColor(Color.parseColor("#00FF41"))
-            textSize = 11f
+            textSize = 12f
             typeface = Typeface.MONOSPACE
             gravity = Gravity.CENTER
             setPadding(0, 0, 0, 8.dp(context))
         }
         root.addView(headerText)
-        
-        val splitPane = LinearLayout(context).apply {
+
+        // --- Top Buttons Layer ---
+        val topActionsRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
-        }
-        root.addView(splitPane)
-        
-        val leftPane = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)
-            setPadding(0, 0, 4.dp(context), 0)
-        }
-        splitPane.addView(leftPane)
-        
-        val rightPane = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.5f)
-            setPadding(4.dp(context), 0, 0, 0)
-        }
-        splitPane.addView(rightPane)
-        
-        val statsText = TextView(context).apply {
-            setTextColor(Color.LTGRAY)
-            textSize = 10f
-            typeface = Typeface.MONOSPACE
-            setPadding(0, 0, 0, 8.dp(context))
-            text = "ENGINE:\n$engineDetected\n\nSTATUS:\n$isConnected\n\nCLASSES:\n${runtimeCache.size}\n\nMETHODS:\n$methodCount\n\nFIELDS:\n$fieldCount\n-----------------------------------"
-        }
-        leftPane.addView(statsText)
-
-        val actionsRow = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(0, 0, 0, 8.dp(context))
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, 16.dp(context))
         }
 
-        val btnLoad = Button(context).apply {
+        val btnLoadClasses = Button(context).apply {
             text = "LOAD CLASSES"
             setTextColor(Color.parseColor("#FFB300"))
-            textSize = 9f
+            textSize = 11f
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 4.dp(context) }
             setBackgroundColor(Color.parseColor("#151515"))
         }
+        
+        val btnInspect = Button(context).apply {
+            text = "INSPECT"
+            setTextColor(Color.parseColor("#00BFFF"))
+            textSize = 11f
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = 4.dp(context) }
+            setBackgroundColor(Color.parseColor("#151515"))
+        }
+
+        topActionsRow.addView(btnLoadClasses)
+        topActionsRow.addView(btnInspect)
+        root.addView(topActionsRow)
+
+        // --- Dynamic Container Viewport ---
+        val containerFrame = FrameLayout(context).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+        }
+        root.addView(containerFrame)
+        
+        // Let's create the sub-layouts: 1. Load Classes View, 2. Inspector View
+        val classesView = createClassesViewport(context, targetPackageName, focusListener)
+        val inspectView = createInspectViewport(context, targetPackageName, focusListener)
+        
+        containerFrame.addView(classesView)
+        containerFrame.addView(inspectView)
+        
+        // Initial state
+        classesView.visibility = View.VISIBLE
+        inspectView.visibility = View.GONE
+
+        btnLoadClasses.setOnClickListener {
+            classesView.visibility = View.VISIBLE
+            inspectView.visibility = View.GONE
+        }
+        
+        btnInspect.setOnClickListener {
+            classesView.visibility = View.GONE
+            inspectView.visibility = View.VISIBLE
+        }
+
+        return root
+    }
+
+    private fun createClassesViewport(context: Context, pkg: String, focusListener: (Boolean) -> Unit): View {
+        val root = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
         val btnSave = Button(context).apply {
-            text = "SAVE DUMP"
+            text = "SAVE CURRENT VIEW TO STORAGE"
             setTextColor(Color.WHITE)
-            textSize = 9f
-            setBackgroundColor(Color.parseColor("#151515"))
+            textSize = 10f
+            setBackgroundColor(Color.parseColor("#222222"))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8.dp(context) }
+        }
+        root.addView(btnSave)
+
+        val searchCard = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#111111"))
+            setPadding(8.dp(context), 8.dp(context), 8.dp(context), 8.dp(context))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8.dp(context) }
+        }
+        
+        val searchInputRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        
+        val searchInput = EditText(context).apply {
+            hint = "Query..."
+            setHintTextColor(Color.DKGRAY)
+            setTextColor(Color.parseColor("#00FF41"))
+            textSize = 12f
+            background = null
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            setOnFocusChangeListener { _, hasFocus -> focusListener(hasFocus) }
+        }
+        
+        // Use an actual Button for searching
+        val btnSearch = Button(context).apply {
+            text = "SEARCH"
+            setTextColor(Color.parseColor("#00FF41"))
+            textSize = 10f
+            setBackgroundColor(Color.parseColor("#222222"))
         }
 
-        actionsRow.addView(btnLoad)
-        actionsRow.addView(btnSave)
-        leftPane.addView(actionsRow)
-
-        val searchInput = EditText(context).apply {
-            hint = "Search (Instant)"
+        searchInputRow.addView(searchInput)
+        searchInputRow.addView(btnSearch)
+        searchCard.addView(searchInputRow)
+        
+        val optionsRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 8.dp(context), 0, 0) }
+        
+        val cbSearchAll = CheckBox(context).apply { text = "All Classes"; setTextColor(Color.LTGRAY); textSize=10f; isChecked=true }
+        val cbSearchTarget = CheckBox(context).apply { text = "Target Class"; setTextColor(Color.LTGRAY); textSize=10f }
+        
+        cbSearchAll.setOnCheckedChangeListener { _, isChecked -> if(isChecked) cbSearchTarget.isChecked = false }
+        cbSearchTarget.setOnCheckedChangeListener { _, isChecked -> if(isChecked) cbSearchAll.isChecked = false }
+        
+        val targetClassInput = EditText(context).apply {
+            hint = "Class name"
             setHintTextColor(Color.DKGRAY)
             setTextColor(Color.parseColor("#00FF41"))
             textSize = 10f
-            background = null
-            setPadding(8.dp(context), 8.dp(context), 8.dp(context), 8.dp(context))
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            visibility = View.GONE
             setOnFocusChangeListener { _, hasFocus -> focusListener(hasFocus) }
-            setBackgroundColor(Color.parseColor("#111111"))
         }
-        leftPane.addView(searchInput)
         
-        val titleList = TextView(context).apply {
-            text = "[CLASS LIST]"
-            setTextColor(Color.parseColor("#00FF41"))
+        cbSearchTarget.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) { cbSearchAll.isChecked = false; targetClassInput.visibility = View.VISIBLE }
+            else { targetClassInput.visibility = View.GONE }
+        }
+        
+        optionsRow.addView(cbSearchAll)
+        optionsRow.addView(cbSearchTarget)
+        optionsRow.addView(targetClassInput)
+        searchCard.addView(optionsRow)
+        
+        root.addView(searchCard)
+
+        val statusText = TextView(context).apply {
+            text = "0 results found."
+            setTextColor(Color.parseColor("#FFB300"))
+            textSize = 11f
+            typeface = Typeface.MONOSPACE
+            setPadding(0, 0, 0, 8.dp(context))
+        }
+        root.addView(statusText)
+
+        val listScroll = ScrollView(context).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f) }
+        val listContainer = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        listScroll.addView(listContainer)
+        root.addView(listScroll)
+        
+        val btnClear = Button(context).apply {
+            text = "CLEAR RESULTS"
+            setTextColor(Color.RED)
             textSize = 10f
-            typeface = Typeface.MONOSPACE
-            setPadding(0, 0, 0, 8.dp(context))
+            setBackgroundColor(Color.parseColor("#151515"))
         }
-        rightPane.addView(titleList)
+        root.addView(btnClear)
+        
+        var currentRenderedCache = mutableListOf<CachedClass>()
 
-        val contentScroll = ScrollView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
-            setPadding(0, 0, 0, 8.dp(context))
-        }
-        val contentLayout = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-        contentScroll.addView(contentLayout)
-        rightPane.addView(contentScroll)
-        
-        val consoleLog = TextView(context).apply {
-            setTextColor(Color.parseColor("#00FF41"))
-            textSize = 8f
-            typeface = Typeface.MONOSPACE
-            setPadding(0, 0, 0, 0)
-            text = "KITTYSPY LOGS\n-----------------------------------\n[INFO] Waiting for action..."
-        }
-        rightPane.addView(consoleLog)
-        
-        fun appendLog(msg: String) {
-            Handler(Looper.getMainLooper()).post {
-                consoleLog.text = "${consoleLog.text}\n[INFO] $msg"
-                val lines = consoleLog.text.split("\n")
-                if (lines.size > 14) {
-                    consoleLog.text = "KITTYSPY LOGS\n-----------------------------------\n" + lines.takeLast(10).joinToString("\n")
-                }
-            }
-        }
-        
-        fun updateStats() {
-            statsText.text = "ENGINE:\n$engineDetected\n\nSTATUS:\n$isConnected\n\nCLASSES:\n${runtimeCache.size}\n\nMETHODS:\n$methodCount\n\nFIELDS:\n$fieldCount\n-----------------------------------"
-        }
-
-        // Save Cache
-        btnSave.setOnClickListener {
-            if (runtimeCache.isEmpty()) {
-                Toast.makeText(context, "Cache empty!", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            try {
-                val dir = java.io.File(android.os.Environment.getExternalStorageDirectory(), "KITTYSPY-CLASSES")
-                if (!dir.exists()) dir.mkdirs()
-                val f = java.io.File(dir, "LoadedClasses.txt")
-                val sb = StringBuilder()
-                for (c in runtimeCache) {
-                    sb.append(c.lineStr).append("\n")
-                    for (i in c.items) {
-                        sb.append(i.lineStr).append("\n")
+        fun renderUi(items: List<CachedClass>, updateStatus: Boolean = true) {
+            currentRenderedCache = items.toMutableList()
+            listContainer.removeAllViews()
+            var totalAdded = 0
+            
+            for (cls in items) {
+                val tvClass = TextView(context).apply {
+                    text = "CLASS: ${cls.className}"
+                    setTextColor(Color.parseColor("#00FF41"))
+                    textSize = 12f
+                    typeface = Typeface.MONOSPACE
+                    setPadding(4.dp(context), 8.dp(context), 4.dp(context), 2.dp(context))
+                    setOnLongClickListener {
+                        val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clip.setPrimaryClip(android.content.ClipData.newPlainText("Class", cls.className))
+                        Toast.makeText(context, "Copied Class: ${cls.className}", Toast.LENGTH_SHORT).show()
+                        true
                     }
                 }
-                f.writeText(sb.toString())
-                appendLog("Dump saved to: ${f.absolutePath}")
-            } catch (e: Exception) {
-                appendLog("Save failed: ${e.message}")
+                listContainer.addView(tvClass)
+                
+                for (item in cls.items) {
+                    val tvItem = TextView(context).apply {
+                        text = if(item.isField) "  |-FIELD: ${item.methodName} | 0x${item.offset}" else "  |-METHOD: ${item.methodName}() | 0x${item.rva}"
+                        setTextColor(if(item.isField) Color.LTGRAY else Color.parseColor("#00FF41"))
+                        textSize = 10f
+                        typeface = Typeface.MONOSPACE
+                        setPadding(12.dp(context), 2.dp(context), 4.dp(context), 2.dp(context))
+                        setOnLongClickListener {
+                            val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clip.setPrimaryClip(android.content.ClipData.newPlainText("Item", if(item.isField) item.offset else item.rva))
+                            Toast.makeText(context, "Copied Val", Toast.LENGTH_SHORT).show()
+                            true
+                        }
+                    }
+                    listContainer.addView(tvItem)
+                    totalAdded++
+                }
             }
+            if(updateStatus) statusText.text = "$totalAdded results found."
         }
         
-        // Load Cache
-        btnLoad.setOnClickListener {
-            appendLog("Detecting Engine...")
-            contentLayout.removeAllViews()
-            
+        fun loadEntireGameCache() {
+            statusText.text = "Searching... parsing game data..."
+            listContainer.removeAllViews()
             Thread {
                 var apkPath = "unknown"
                 try {
-                    val targetInfo = context.packageManager.getApplicationInfo(targetPackageName, 0)
+                    val targetInfo = context.packageManager.getApplicationInfo(pkg, 0)
                     if (targetInfo.publicSourceDir != null) apkPath = targetInfo.publicSourceDir
                 } catch (e: Exception) {}
                 
-                val dumped = NativeDumper.dumpGameFunctions(targetPackageName, apkPath)
-                
+                val dumped = NativeDumper.dumpGameFunctions(pkg, apkPath)
                 val tempCache = mutableListOf<CachedClass>()
                 var currentClass: CachedClass? = null
-                var mCount = 0
-                var fCount = 0
                 
                 for (line in dumped) {
                     if (line.startsWith("[Class] ")) {
@@ -220,267 +287,327 @@ object AdvancedTabHelper {
                         currentClass = CachedClass(line, className)
                         tempCache.add(currentClass)
                     } else if (line.startsWith("  [Method] ") && currentClass != null) {
-                        var mName = line.substringAfter("] ").substringBefore(" :")
-                        var pCount = 0
-                        var offset = "0x0"
+                        val mName = line.substringAfter("] ").substringBefore(" :")
                         var rva = "0x0"
-                        
-                        if (line.contains("ParamCount")) {
-                            try { pCount = line.substringAfter("ParamCount ").substringBefore(" ").toInt() } catch(e:Exception){}
-                        }
-                        if (line.contains("Offset 0x") || line.contains("RVA 0x")) {
-                            try {
-                                if (line.contains("RVA ")) rva = line.substringAfter("RVA 0x").substringBefore(" ").trim()
-                                if (line.contains("Offset ")) offset = line.substringAfter("Offset 0x").substringBefore(" ").trim()
-                            } catch (e: Exception){}
-                        }
-                        
-                        currentClass.items.add(CachedMethod(line, mName, false, rva, offset, pCount))
-                        mCount++
+                        if (line.contains("RVA ")) rva = line.substringAfter("RVA 0x").substringBefore(" ").trim()
+                        currentClass.items.add(CachedMethod(line, mName, false, rva))
                     } else if (line.startsWith("  [Field] ") && currentClass != null) {
-                        currentClass.items.add(CachedMethod(line, line.substringAfter("] "), true))
-                        fCount++
+                        val parsedName = line.substringAfter("] ")
+                        var offset = "0x0"
+                        if (parsedName.contains("Offset 0x")) {
+                            offset = parsedName.substringAfter("Offset 0x").substringBefore(" ").trim()
+                        }
+                        currentClass.items.add(CachedMethod(line, parsedName, true, "0x0", offset))
                     }
                 }
                 
+                tempCache.sortBy { it.className }
                 runtimeCache = tempCache
-                methodCount = mCount
-                fieldCount = fCount
-                engineDetected = if (tempCache.isNotEmpty()) "UNITY" else "UNKNOWN"
-                isConnected = "CONNECTED"
+                engineDetected = if (tempCache.isNotEmpty()) "UNITY" else "UNKNOWN" // Simple fallback
                 
                 Handler(Looper.getMainLooper()).post {
-                    appendLog("Metadata cache created")
-                    appendLog("${runtimeCache.size} classes loaded")
-                    appendLog("$mCount methods loaded")
-                    appendLog("$fCount fields loaded")
-                    updateStats()
-                    renderClasses(context, contentLayout, "", targetPackageName)
+                    renderUi(runtimeCache, false)
+                    statusText.text = "Loaded active current classes of the game (${runtimeCache.size} classes)"
                 }
             }.start()
         }
 
-        var searchRunnable: Runnable? = null
-        val handlerSearch = Handler(Looper.getMainLooper())
-
-        searchInput.addTextChangedListener(object: TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                searchRunnable?.let { handlerSearch.removeCallbacks(it) }
-                searchRunnable = Runnable {
-                    renderClasses(context, contentLayout, s.toString().trim(), targetPackageName)
-                }
-                handlerSearch.postDelayed(searchRunnable!!, 300)
-            }
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-        })
-        
-        // Background watch polling (silent, no active watcher spam)
-        Thread {
-            while (true) {
-                Thread.sleep(2000)
-                try {
-                    val events = NativeDumper.pollHookEvents()
-                    var newActivity = false
-                    val eventMap = mutableMapOf<String, Int>()
-                    for (e in events) {
-                        val parts = e.split("|")
-                        if (parts.size == 2) {
-                            try {
-                                eventMap[parts[0]] = parts[1].toInt()
-                                newActivity = true
-                            } catch(e:Exception){}
-                        }
-                    }
-                    if (newActivity) {
-                        Handler(Looper.getMainLooper()).post {
-                            for ((m, c) in eventMap) {
-                                appendLog("Watched Activity -> $m (Calls: $c)")
+        btnSearch.setOnClickListener {
+            val query = searchInput.text.toString().trim().lowercase()
+            if (query.isEmpty()) return@setOnClickListener
+            
+            val isSearchAll = cbSearchAll.isChecked
+            val tClass = targetClassInput.text.toString().trim().lowercase()
+            
+            scope.launch {
+                statusText.text = "Searching..."
+                listContainer.removeAllViews()
+                
+                val results = mutableListOf<CachedClass>()
+                var totalFoundCount = 0
+                
+                withContext(Dispatchers.Default) {
+                    if (isSearchAll) {
+                        var chunkCtr = 0
+                        for (cls in runtimeCache) {
+                            chunkCtr++
+                            if (chunkCtr % 50 == 0) delay(5) // 5ms rest to prevent freezing
+                            
+                            val matches = cls.items.filter { it.methodName.lowercase().contains(query) }
+                            if (matches.isNotEmpty() || cls.className.lowercase().contains(query)) {
+                                val matchClass = CachedClass(cls.lineStr, cls.className, matches.toMutableList())
+                                if (matches.isEmpty()) matchClass.items.addAll(cls.items)
+                                results.add(matchClass)
+                                totalFoundCount += matchClass.items.size
                             }
                         }
+                    } else {
+                        // find class first
+                        var chunkCtr = 0
+                        var targetClsCache: CachedClass? = null
+                        for (cls in runtimeCache) {
+                            chunkCtr++
+                            if (chunkCtr % 50 == 0) delay(5)
+                            if (cls.className.lowercase().contains(tClass)) {
+                                targetClsCache = cls
+                                break
+                            }
+                        }
+                        if (targetClsCache != null) {
+                            val matches = targetClsCache.items.filter { it.methodName.lowercase().contains(query) }
+                            results.add(CachedClass(targetClsCache.lineStr, targetClsCache.className, matches.toMutableList()))
+                            totalFoundCount += matches.size
+                        }
                     }
-                } catch(e: Exception) {}
+                }
+                
+                if (results.isEmpty()) {
+                    statusText.text = "Not found."
+                } else {
+                    renderUi(results, true)
+                }
             }
-        }.start()
+        }
+        
+        btnClear.setOnClickListener {
+            // Revert back to full list
+            renderUi(runtimeCache, false)
+            statusText.text = "Loaded active current classes of the game (${runtimeCache.size} classes)"
+        }
+        
+        btnSave.setOnClickListener {
+            // generate save string
+            val isFull = (currentRenderedCache.size == runtimeCache.size)
+            val sb = StringBuilder()
+            
+            if (!isFull) {
+                val query = searchInput.text.toString()
+                sb.append("------------KITTYSPY-----------\n")
+                sb.append("Searched results of ($query) from loaded classes of game $pkg\n\n")
+            } else {
+                sb.append("----------------KITTYSPY-------------\n")
+                sb.append("KITTY SPY RUNTIME DUMPER FROM GAME $pkg\n\n")
+            }
+            
+            for (cls in currentRenderedCache) {
+                if (engineDetected == "UNITY") {
+                    sb.append("|-Classes:= ${cls.className}\n")
+                    val fields = cls.items.filter { it.isField }
+                    if (fields.isNotEmpty()) {
+                        sb.append("|-FIELDS:\n")
+                        for (f in fields) sb.append("|  |- ${f.methodName}\n")
+                    }
+                    val methods = cls.items.filter { !it.isField }
+                    if (methods.isNotEmpty()) {
+                        sb.append("|-Methods:=\n")
+                        for (m in methods) {
+                            sb.append("|- ${m.methodName}()\n")
+                            sb.append("|-RVA:= ${m.rva}\n")
+                        }
+                    }
+                } else {
+                    sb.append("======================================================\n")
+                    sb.append("CLASS: ${cls.className}\n")
+                    sb.append("======================================================\n\n")
+                    
+                    val fields = cls.items.filter { it.isField }
+                    if (fields.isNotEmpty()) {
+                        sb.append("|-Properties:\n")
+                        for (f in fields) {
+                            sb.append("|  |- ${f.methodName}\n")
+                            sb.append("|  |  |-Offset: 0x${f.offset}\n|\n")
+                        }
+                    }
+                    val methods = cls.items.filter { !it.isField }
+                    if (methods.isNotEmpty()) {
+                        sb.append("|-Functions:\n|\n")
+                        for (m in methods) {
+                            sb.append("|  |- ${m.methodName}\n")
+                            sb.append("|  |  |-RVA: 0x${m.rva}\n|\n")
+                        }
+                    }
+                }
+                sb.append("\n")
+            }
+            
+            val intent = Intent(context, KittySpySaveActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra("fileName", if (isFull) "KITTYSPY_LClasses.py" else "kittyspy_search.py")
+            }
+            KittySpySaveActivity.dataToSave = sb.toString()
+            try {
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Cannot open save dialog.", Toast.LENGTH_SHORT).show()
+            }
+        }
+        
+        // Auto load classes once layout is created
+        loadEntireGameCache()
 
         return root
     }
 
-    private var renderJob: kotlinx.coroutines.Job? = null
-
-    private fun renderClasses(context: Context, container: LinearLayout, filter: String, pkg: String) {
-        renderJob?.cancel()
-        renderJob = CoroutineScope(Dispatchers.Main).launch {
-            val query = filter.lowercase()
-            
-            if (runtimeCache.isEmpty()) {
-                container.removeAllViews()
-                container.addView(TextView(context).apply { text = "[ Class List Empty ]\nClick LOAD CACHE."; setTextColor(Color.GRAY) })
-                return@launch
+    private fun createInspectViewport(context: Context, pkg: String, focusListener: (Boolean) -> Unit): View {
+        val root = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        
+        val header = TextView(context).apply {
+            text = "-----------------------------------\nINSPECTOR\n-----------------------------------"
+            setTextColor(Color.parseColor("#FFB300"))
+            textSize = 12f
+            typeface = Typeface.MONOSPACE
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, 16.dp(context))
+        }
+        root.addView(header)
+        
+        val lblInput = TextView(context).apply { text = "Input RVA"; setTextColor(Color.LTGRAY); textSize = 10f }
+        root.addView(lblInput)
+        
+        val rvaInput = EditText(context).apply {
+            hint = "e.g. 0x153532C"
+            setHintTextColor(Color.DKGRAY)
+            setTextColor(Color.parseColor("#00FF41"))
+            textSize = 12f
+            background = null
+            setBackgroundColor(Color.parseColor("#111111"))
+            setPadding(8.dp(context), 8.dp(context), 8.dp(context), 8.dp(context))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin=8.dp(context) }
+            setOnFocusChangeListener { _, hasFocus -> focusListener(hasFocus) }
+        }
+        root.addView(rvaInput)
+        
+        val btnResolve = Button(context).apply {
+            text = "RESOLVE"
+            setTextColor(Color.WHITE)
+            textSize = 11f
+            setBackgroundColor(Color.parseColor("#222222"))
+        }
+        root.addView(btnResolve)
+        
+        val resultContainer = LinearLayout(context).apply { 
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            setPadding(0, 16.dp(context), 0, 16.dp(context))
+        }
+        root.addView(resultContainer)
+        
+        val tvResultText = TextView(context).apply { 
+            setTextColor(Color.parseColor("#00FF41"))
+            textSize = 11f
+            typeface = Typeface.MONOSPACE
+        }
+        resultContainer.addView(tvResultText)
+        
+        val actionsRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 8.dp(context), 0, 0) }
+        val btnInspectWatch = Button(context).apply { text = "INSPECT"; setTextColor(Color.WHITE); setBackgroundColor(Color.parseColor("#00BFFF")); textSize = 10f; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin=4.dp(context) } }
+        val btnClearWatch = Button(context).apply { text = "CLEAR"; setTextColor(Color.WHITE); setBackgroundColor(Color.RED); textSize = 10f; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin=4.dp(context) } }
+        actionsRow.addView(btnInspectWatch)
+        actionsRow.addView(btnClearWatch)
+        resultContainer.addView(actionsRow)
+        
+        val inspectedListText = TextView(context).apply {
+            text = "-----------------------------------\nINSPECTED TARGETS\n"
+            setTextColor(Color.parseColor("#00FF41"))
+            textSize = 10f
+            typeface = Typeface.MONOSPACE
+            setPadding(0, 16.dp(context), 0, 0)
+        }
+        root.addView(inspectedListText)
+        
+        var resolvedTarget: CachedMethod? = null
+        var resolvedClass: CachedClass? = null
+        
+        // Polling loop for active watches
+        val watchedItems = mutableListOf<CachedMethod>()
+        
+        fun updateWatchedListText() {
+            val sb = StringBuilder("-----------------------------------\nINSPECTED TARGETS\n\n")
+            for (w in watchedItems) {
+                sb.append("${w.methodName}()\nCalls: ${w.callCount}\n\n")
             }
-            
-            // Search memory in background (Instant)
-            val filteredNodes = withContext(Dispatchers.IO) {
-                val result = mutableListOf<CachedClass>()
-                var itemsAddedNum = 0
-                
-                for (cls in runtimeCache) {
-                    val classMatch = query.isEmpty() || cls.className.lowercase().contains(query)
-                    val matchingItems = mutableListOf<CachedMethod>()
-                    
-                    if (classMatch) {
-                        matchingItems.addAll(cls.items)
-                    } else {
-                        for (item in cls.items) {
-                            if (item.methodName.lowercase().contains(query)) {
-                                matchingItems.add(item)
+            inspectedListText.text = sb.toString()
+        }
+
+        Thread {
+            while (true) {
+                Thread.sleep(1000)
+                try {
+                    val events = NativeDumper.pollHookEvents()
+                    var changed = false
+                    for (e in events) {
+                        val parts = e.split("|")
+                        if (parts.size == 2) {
+                            val func = parts[0]
+                            val callC = parts[1].toInt()
+                            val match = watchedItems.find { it.methodName == func }
+                            if (match != null && match.callCount != callC) {
+                                match.callCount = callC
+                                changed = true
                             }
                         }
                     }
-                    
-                    if (classMatch || matchingItems.isNotEmpty()) {
-                        result.add(CachedClass(cls.lineStr, cls.className, matchingItems))
-                        itemsAddedNum += 1
+                    if (changed) {
+                        Handler(Looper.getMainLooper()).post { updateWatchedListText() }
                     }
-                    
-                    // Instant limit to prevent UI freezing
-                    if (itemsAddedNum > 50) break
-                }
-                result
+                } catch(e: Exception) {}
             }
+        }.start()
+        
+        btnResolve.setOnClickListener {
+            val rvaQ = rvaInput.text.toString().trim().lowercase().removePrefix("0x")
+            var foundC: CachedClass? = null
+            var foundM: CachedMethod? = null
             
-            container.removeAllViews()
-            var itemsAdded = 0
-            
-            for (cls in filteredNodes) {
-                val classRow = LinearLayout(context).apply {
-                    orientation = LinearLayout.VERTICAL
-                    setPadding(0, 4.dp(context), 0, 4.dp(context))
-                }
-                
-                val classTitle = TextView(context).apply {
-                    text = cls.className
-                    setTextColor(Color.parseColor("#FFB300"))
-                    textSize = 11f
-                    typeface = Typeface.MONOSPACE
-                    setPadding(4.dp(context), 4.dp(context), 4.dp(context), 4.dp(context))
-                    setBackgroundColor(Color.parseColor("#151515"))
-                }
-                
-                val childrenContainer = LinearLayout(context).apply {
-                    orientation = LinearLayout.VERTICAL
-                    setPadding(16.dp(context), 0, 0, 0)
-                    visibility = View.GONE
-                }
-                
-                // Add Class Details Segment
-                val clsDetails = TextView(context).apply {
-                    text = "-----------------------------------\nCLASS DETAILS\n-----------------------------------\nName:\n${cls.className}\n\nNamespace:\nUnknown\n\nMethods:\n${cls.items.count { !it.isField }}\n\nFields:\n${cls.items.count { it.isField }}\n-----------------------------------"
-                    setTextColor(Color.LTGRAY)
-                    textSize = 10f
-                    typeface = Typeface.MONOSPACE
-                    setPadding(0, 4.dp(context), 0, 4.dp(context))
-                }
-                childrenContainer.addView(clsDetails)
-                
+            for (cls in runtimeCache) {
                 for (item in cls.items) {
-                    val v = createInspectableItem(context, item, cls.className, pkg)
-                    childrenContainer.addView(v)
-                }
-                
-                classTitle.setOnClickListener {
-                    if (childrenContainer.visibility == View.VISIBLE) {
-                        childrenContainer.visibility = View.GONE
-                    } else {
-                        childrenContainer.visibility = View.VISIBLE
+                    if (!item.isField && item.rva.lowercase() == rvaQ) {
+                        foundM = item
+                        foundC = cls
+                        break
                     }
                 }
+                if (foundM != null) break
+            }
+            
+            if (foundM != null && foundC != null) {
+                resolvedClass = foundC
+                resolvedTarget = foundM
                 
-                classRow.addView(classTitle)
-                classRow.addView(childrenContainer)
-                container.addView(classRow)
-                itemsAdded++
-            }
-            
-            if (itemsAdded == 0) {
-                container.addView(TextView(context).apply { text = "No results found."; setTextColor(Color.GRAY) })
-            }
-        }
-    }
-
-    private fun createInspectableItem(context: Context, item: CachedMethod, className: String, pkg: String): View {
-        val root = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 4.dp(context), 0, 4.dp(context)) }
-        
-        val tv = TextView(context).apply {
-            text = if (item.isField) item.methodName else "${item.methodName}()"
-            setTextColor(if (item.isField) Color.GRAY else Color.parseColor("#00FF00"))
-            textSize = 10f
-            typeface = Typeface.MONOSPACE
-        }
-        
-        val detailsContainer = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = View.GONE
-            setPadding(8.dp(context), 8.dp(context), 8.dp(context), 8.dp(context))
-            setBackgroundColor(Color.parseColor("#222222"))
-        }
-        
-        val detailsText = TextView(context).apply {
-            setTextColor(Color.WHITE)
-            textSize = 10f
-            typeface = Typeface.MONOSPACE
-            if (item.isField) {
-                text = "-----------------------------------\nFIELD DETAILS\n-----------------------------------\nClass:\n$className\n\nField:\n${item.methodName}\n\nType:\nUnknown\n\nOffset:\n0x${item.offset}\n-----------------------------------"
+                val engineStr = if (engineDetected == "UNITY") "Class:= ${foundC.className}\nMethod:\n${foundM.methodName}()\nRVA:\n0x${foundM.rva}" 
+                                else "Class:= ${foundC.className}\nFunction:=\n${foundM.methodName}()\nRVA:=\n0x${foundM.rva}"
+                
+                tvResultText.text = "-----------------------------------\n$engineStr\n-----------------------------------"
+                resultContainer.visibility = View.VISIBLE
             } else {
-                text = "-----------------------------------\nMETHOD DETAILS\n-----------------------------------\nClass:\n$className\n\nMethod:\n${item.methodName}()\n\nParameters:\n${item.pCount}\n\nReturn:\nUnknown\n\nRVA:\n0x${item.rva}\n\nOffset:\n0x${item.offset}\n\nState:\nLoaded\n-----------------------------------"
+                Toast.makeText(context, "RVA Not Found", Toast.LENGTH_SHORT).show()
+                resultContainer.visibility = View.GONE
             }
         }
-        detailsContainer.addView(detailsText)
         
-        if (!item.isField) {
-            val actionsRow = LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                setPadding(0, 8.dp(context), 0, 0)
-            }
-            fun btn(label: String, action: ()->Unit) {
-                val b = TextView(context).apply {
-                    text = "[$label]"
-                    setTextColor(Color.parseColor("#00BFFF"))
-                    textSize = 10f
-                    setPadding(0, 0, 16.dp(context), 0)
-                    setOnClickListener { action() }
+        btnInspectWatch.setOnClickListener {
+            val t = resolvedTarget
+            if (t != null) {
+                if (watchedItems.find { it.methodName == t.methodName } == null) {
+                    watchedItems.add(t)
+                    var addr = 0L
+                    try { addr = t.offset.toLong(16) } catch(e:Exception){}
+                    NativeDumper.registerActiveInspector(addr, t.methodName) 
+                    Toast.makeText(context, "Inspect started for ${t.methodName}", Toast.LENGTH_SHORT).show()
+                    updateWatchedListText()
                 }
-                actionsRow.addView(b)
             }
-            
-            btn("Copy RVA") {
-                val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                clip.setPrimaryClip(android.content.ClipData.newPlainText("RVA", "0x${item.rva}"))
-                Toast.makeText(context, "Copied RVA", Toast.LENGTH_SHORT).show()
-            }
-            
-            btn("Copy Offset") {
-                val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                clip.setPrimaryClip(android.content.ClipData.newPlainText("Offset", "0x${item.offset}"))
-                Toast.makeText(context, "Copied Offset", Toast.LENGTH_SHORT).show()
-            }
-            
-            btn("Watch") {
-                var addr = 0L
-                try { addr = item.offset.toLong(16) } catch(e:Exception){}
-                NativeDumper.registerActiveInspector(addr, item.methodName) 
-                item.isWatched = true
-                Toast.makeText(context, "Added to Watched Methods", Toast.LENGTH_SHORT).show()
-            }
-            
-            detailsContainer.addView(actionsRow)
         }
         
-        tv.setOnClickListener {
-            detailsContainer.visibility = if (detailsContainer.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        btnClearWatch.setOnClickListener {
+            watchedItems.clear()
+            updateWatchedListText()
+            tvResultText.text = ""
+            resultContainer.visibility = View.GONE
         }
-        root.addView(tv)
-        root.addView(detailsContainer)
+
         return root
     }
 
@@ -491,13 +618,12 @@ object AdvancedTabHelper {
             gravity = Gravity.CENTER
         }
         
-        fun btn(title: String, url: String, col: Int, iconResId: Int) {
+        fun btn(title: String, url: String, col: Int) {
             val row = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
+                gravity = Gravity.CENTER
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 50.dp(context)).apply { bottomMargin = 8.dp(context) }
                 setBackgroundColor(Color.parseColor("#151515"))
-                setPadding(24.dp(context), 0, 0, 0)
                 isClickable = true
                 setOnClickListener {
                     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).apply {
@@ -507,21 +633,12 @@ object AdvancedTabHelper {
                 }
             }
 
-            val icon = ImageView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(24.dp(context), 24.dp(context)).apply { rightMargin = 16.dp(context) }
-                try {
-                    setImageResource(iconResId)
-                } catch (e: Exception) {}
-            }
-
             val textV = TextView(context).apply {
                 text = title
                 setTextColor(col)
                 textSize = 12f
                 typeface = Typeface.DEFAULT_BOLD
             }
-
-            row.addView(icon)
             row.addView(textV)
             root.addView(row)
         }
@@ -535,10 +652,11 @@ object AdvancedTabHelper {
         }
         root.addView(header)
         
-        btn("Contact Gmail", "mailto:l0rdsilver.703@gmail.com", Color.WHITE, R.drawable.ic_gmail)
-        btn("Join Telegram", "https://t.me/greenpythonmodsLSV", Color.parseColor("#00BFFF"), R.drawable.ic_telegram)
-        btn("Subscribe on YouTube", "https://youtube.com/@lordsilver77?si=AD_7tVySuNsTEmQ7", Color.parseColor("#FF0000"), R.drawable.ic_youtube)
+        btn("Contact Gmail", "mailto:l0rdsilver.703@gmail.com", Color.WHITE)
+        btn("Join Telegram", "https://t.me/+NqXoMXDCiYkyN2I8", Color.parseColor("#00BFFF"))
+        btn("Subscribe on YouTube", "https://youtube.com/@lordsilver77?si=AD_7tVySuNsTEmQ7", Color.parseColor("#FF0000"))
         
         return root
     }
+
 }

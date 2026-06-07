@@ -135,6 +135,16 @@ fun SplashScreen(onTimeout: () -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 32.dp)
             )
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "LORDSILVER\n@GreenpythonMods",
+                color = TextMuted,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                fontSize = 10.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
         }
     }
 }
@@ -486,6 +496,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
     // STATE FOR FLOATING MENU
     var scanStatusText by remember { mutableStateOf("") }
     var scanErrorDialogText by remember { mutableStateOf<String?>(null) }
+    var showContactModal by remember { mutableStateOf(false) }
 
     LaunchedEffect(activeScanningApp) {
         if (activeScanningApp == null) return@LaunchedEffect
@@ -691,6 +702,18 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                     // REDESIGNED PORTFOLIO HEADER (AS SHOWN IN CAPTURE IMAGE)
                     KittyspyAngledHeader()
                     
+                    IconButton(
+                        onClick = { showContactModal = true },
+                        modifier = Modifier.align(Alignment.TopStart).padding(top = 16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Contact Support",
+                            tint = Color(0xFF00E676),
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
                     IconButton(
                         onClick = {
                             val prefs = context.getSharedPreferences("KittySettings", Context.MODE_PRIVATE)
@@ -1624,6 +1647,69 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         fontFamily = FontFamily.Monospace,
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     )
+                }
+            }
+        }
+    }
+
+    if (showContactModal) {
+        Dialog(onDismissRequest = { showContactModal = false }) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = CardSlate),
+                border = BorderStroke(1.5.dp, Color(0xFF00E676)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "CONTACT SUPPORT",
+                        color = Color(0xFF00E676),
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 18.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("mailto:l0rdsilver.703@gmail.com")).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            try { context.startActivity(intent) } catch (e: Exception) {}
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF222222)),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                    ) {
+                        Text("Gmail", color = Color.White, fontFamily = FontFamily.Monospace)
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Button(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/+NqXoMXDCiYkyN2I8")).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            try { context.startActivity(intent) } catch (e: Exception) {}
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00BFFF)),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                    ) {
+                        Text("Telegram", color = Color.White, fontFamily = FontFamily.Monospace)
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedButton(
+                        onClick = { showContactModal = false },
+                        border = BorderStroke(1.dp, Color(0xFF00E676)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF00E676))
+                    ) {
+                        Text("CLOSE", fontFamily = FontFamily.Monospace)
+                    }
                 }
             }
         }
