@@ -20,6 +20,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.Button
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -71,18 +76,58 @@ class KittySpyMenuService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.getStringExtra("packageName")?.let {
             targetPackageName = it
+            waitForGameToLoad() // auto detect game
         }
         return START_NOT_STICKY
     }
 
+    private fun waitForGameToLoad() {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            var libLoaded = false
+            var attempt = 0
+            while (!libLoaded && attempt < 120) {
+                try {
+                    val process = Runtime.getRuntime().exec("pidof $targetPackageName")
+                    val pidStr = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream)).readLine()
+                    if (!pidStr.isNullOrEmpty()) {
+                        val pid = pidStr.trim()
+                        val mapProcess = Runtime.getRuntime().exec(arrayOf("su", "-c", "grep -E 'libil2cpp\\.so|libue4\\.so' /proc/$pid/maps"))
+                        if (!java.io.BufferedReader(java.io.InputStreamReader(mapProcess.inputStream)).readLine().isNullOrEmpty()) {
+                            libLoaded = true
+                            break
+                        }
+                    }
+                } catch (e: Exception) {}
+                
+                try {
+                    val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+                    val processes = am.runningAppProcesses
+                    if (processes?.any { it.processName == targetPackageName } == true) {
+                        kotlinx.coroutines.delay(5000)
+                        libLoaded = true
+                        break
+                    }
+                } catch (e: Exception) {}
+
+                kotlinx.coroutines.delay(1000)
+                attempt++
+            }
+            
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                isGameReady = true
+                Toast.makeText(this@KittySpyMenuService, "Game Engine .so Loaded. KittySpy Ready", Toast.LENGTH_LONG).show()
+                try {
+                    windowManager.addView(rootView, layoutParams)
+                } catch (e: Exception) {
+                    Toast.makeText(this@KittySpyMenuService, "Failed to inject Mod Menu: ${e.message}", Toast.LENGTH_LONG).show()
+                    stopSelf()
+                }
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
-        targetPackageName = this.packageName
-        
-        Handler(Looper.getMainLooper()).postDelayed({
-            isGameReady = true
-            Toast.makeText(this, "Game Loaded. KittySpy Ready", Toast.LENGTH_LONG).show()
-        }, 30000)
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
             val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName")).apply {
@@ -121,13 +166,7 @@ class KittySpyMenuService : Service() {
 
         rootView.addView(expandedView)
         rootView.addView(collapsedView)
-
-        try {
-            windowManager.addView(rootView, layoutParams)
-        } catch (e: Exception) {
-            Toast.makeText(this, "Failed to inject Mod Menu: ${e.message}", Toast.LENGTH_LONG).show()
-            stopSelf()
-        }
+        // windowManager.addView will be dynamically called when the game loads!
     }
 
     private var initialX = 0
