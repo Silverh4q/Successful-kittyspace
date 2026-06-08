@@ -267,20 +267,58 @@ object AdvancedTabHelper {
                 listContainer.addView(tvClass)
                 
                 for (item in cls.items) {
+                    val itemLayout = LinearLayout(context).apply {
+                        orientation = LinearLayout.VERTICAL
+                    }
                     val tvItem = TextView(context).apply {
-                        text = if(item.isField) "  |-FIELD: ${item.methodName} | 0x${item.offset}" else "  |-METHOD: ${item.methodName}() | 0x${item.rva}"
+                        text = if (item.isField) "  |-FIELD: ${item.methodName} | 0x${item.offset}" else "  |-METHOD: ${item.methodName}() | RVA: 0x${item.rva}"
                         setTextColor(if(item.isField) Color.LTGRAY else Color.parseColor("#00FF41"))
                         textSize = 10f
                         typeface = Typeface.MONOSPACE
                         setPadding(12.dp(context), 2.dp(context), 4.dp(context), 2.dp(context))
-                        setOnLongClickListener {
+                    }
+                    
+                    val optionsLayout = LinearLayout(context).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        visibility = View.GONE
+                        setPadding(24.dp(context), 0, 0, 0)
+                    }
+                    
+                    val btnCopyRva = Button(context).apply {
+                        text = if(item.isField) "COPY OFFSET" else "COPY RVA"
+                        textSize = 8f
+                        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                        setOnClickListener {
                             val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            clip.setPrimaryClip(android.content.ClipData.newPlainText("Item", if(item.isField) item.offset else item.rva))
-                            Toast.makeText(context, "Copied Val", Toast.LENGTH_SHORT).show()
-                            true
+                            clip.setPrimaryClip(android.content.ClipData.newPlainText("Item", if(item.isField) "0x${item.offset}" else "0x${item.rva}"))
+                            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                         }
                     }
-                    listContainer.addView(tvItem)
+
+                    val btnCopyAddress = Button(context).apply {
+                        text = "COPY ADDRESS"
+                        textSize = 8f
+                        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                        setOnClickListener {
+                            val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            val clipText = if(item.isField) "0x${item.offset}" else "0x${item.offset}" // Assuming offset holds address string or something similar if address not provided uniquely
+                            clip.setPrimaryClip(android.content.ClipData.newPlainText("Item", clipText))
+                            Toast.makeText(context, "Copied Address", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    
+                    optionsLayout.addView(btnCopyRva)
+                    if (!item.isField) {
+                        optionsLayout.addView(btnCopyAddress)
+                    }
+                    
+                    tvItem.setOnClickListener {
+                        optionsLayout.visibility = if (optionsLayout.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+                    }
+                    
+                    itemLayout.addView(tvItem)
+                    itemLayout.addView(optionsLayout)
+                    listContainer.addView(itemLayout)
                     totalAdded++
                 }
             }

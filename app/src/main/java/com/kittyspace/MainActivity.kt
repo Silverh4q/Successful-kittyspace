@@ -1431,7 +1431,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = Icons.Default.Home,
-                                    contentDescription = "KittySpace",
+                                    contentDescription = com.kittyspace.ui.Obfuscator.o("PB4DAw4kBxYUEg=="),
                                     tint = if (isSpaceActive) Color(0xFF00E676) else TextMuted,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -1481,7 +1481,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = Icons.Default.Build,
-                                    contentDescription = "KittyDumper",
+                                    contentDescription = com.kittyspace.ui.Obfuscator.o("PB4DAw4zAhoHEgU="),
                                     tint = if (isDumperActive) Color(0xFF00E676) else TextMuted,
                                     modifier = Modifier.size(20.dp)
                                 )

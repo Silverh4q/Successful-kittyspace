@@ -192,7 +192,7 @@ class KittyDumpService : Service() {
         val outDir = File(documentsDir, "KittyDumper/Unity/$packageName")
         outDir.mkdirs()
 
-        val dumpFile = KittyDumperEngine.dumpUnity(libil2cpp, metadata, outDir) { logLine ->
+        val dumpFile = KittyDumperEngine.dumpUnity(libil2cpp, metadata, outDir, packageName) { logLine ->
             KittyDumpManager.addLog(logLine)
         }
 
@@ -247,7 +247,7 @@ class KittyDumpService : Service() {
         val outDir = File(documentsDir, "KittyDumper/Unreal/$packageName")
         outDir.mkdirs()
 
-        val dumpFile = KittyDumperEngine.dumpUnreal(libue4, outDir) { logLine ->
+        val dumpFile = KittyDumperEngine.dumpUnreal(libue4, outDir, packageName) { logLine ->
             KittyDumpManager.addLog(logLine)
         }
 
@@ -285,7 +285,7 @@ class KittyDumpService : Service() {
         val outDir = File(documentsDir, "KittyDumper/Unity/StorageManual")
         outDir.mkdirs()
 
-        val dumpResult = KittyDumperEngine.dumpUnity(libFile, metaFile, outDir) { logLine ->
+        val dumpResult = KittyDumperEngine.dumpUnity(libFile, metaFile, outDir, "Unknown_Package") { logLine ->
             KittyDumpManager.addLog(logLine)
         }
 
@@ -317,7 +317,7 @@ class KittyDumpService : Service() {
         val outDir = File(documentsDir, "KittyDumper/Unreal/StorageManual")
         outDir.mkdirs()
 
-        val dumpResult = KittyDumperEngine.dumpUnreal(libFile, outDir) { logLine ->
+        val dumpResult = KittyDumperEngine.dumpUnreal(libFile, outDir, "Unknown_Package") { logLine ->
             KittyDumpManager.addLog(logLine)
         }
 

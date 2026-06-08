@@ -19,8 +19,9 @@ class KittySpySaveActivity : Activity() {
         
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = "application/x-python"
+            type = "*/*"
             putExtra(Intent.EXTRA_TITLE, fileName)
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/plain", "application/octet-stream"))
         }
         
         startActivityForResult(intent, CREATE_FILE)

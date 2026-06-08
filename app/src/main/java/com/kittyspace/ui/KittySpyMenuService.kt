@@ -38,7 +38,7 @@ class KittySpyMenuService : Service() {
     companion object {
         @JvmStatic
         fun start(context: Context) {
-            android.util.Log.d("KittySpy", "Service start() called from ${context.packageName}")
+            android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "Service start() called from ${context.packageName}")
             val intent = Intent(context, KittySpyMenuService::class.java)
             intent.putExtra("packageName", context.packageName)
             context.startService(intent)
@@ -83,12 +83,12 @@ class KittySpyMenuService : Service() {
     private var isUiInitialized = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        android.util.Log.d("KittySpy", "onStartCommand entered")
+        android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "onStartCommand entered")
         targetPackageName = intent?.getStringExtra("packageName") ?: this.packageName
-        android.util.Log.d("KittySpy", "packageName received: $targetPackageName")
+        android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "packageName received: $targetPackageName")
         
         if (!isUiInitialized) {
-            android.util.Log.d("KittySpy", "initializeUI started")
+            android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "initializeUI started")
             initializeUI()
         }
         waitForGameToLoad() // auto detect game
@@ -137,19 +137,19 @@ class KittySpyMenuService : Service() {
             if (rootView.parent == null) {
                 android.util.Log.d(o("PB4DAw4kBw4="), "addView called")
                 windowManager.addView(rootView, layoutParams)
-                android.util.Log.d("KittySpy", "addView success")
+                android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "addView success")
             }
         } catch (e: Exception) {
-            android.util.Log.e("KittySpy", "addView exception", e)
+            android.util.Log.e(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "addView exception", e)
             Toast.makeText(this, "Failed to display menu overlay: ${e.message}", Toast.LENGTH_LONG).show()
         }
         isUiInitialized = true
-        android.util.Log.d("KittySpy", "initializeUI completed")
+        android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "initializeUI completed")
     }
 
     override fun onCreate() {
         super.onCreate()
-        android.util.Log.d("KittySpy", "Service created")
+        android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "Service created")
     }
 
     private fun waitForGameToLoad() {
@@ -315,7 +315,7 @@ class KittySpyMenuService : Service() {
             }
             
             val subtitle = TextView(context).apply {
-                this.text = "Enter VIP key to inject hooks into memory."
+                this.text = "INPUT VIP KEY TO START RUNTIME ANALYSIS"
                 setTextColor(Color.GRAY)
                 textSize = 12f
                 gravity = Gravity.CENTER

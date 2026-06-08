@@ -11,7 +11,7 @@ import java.nio.ByteOrder
 import java.util.zip.ZipFile
 
 object KittyDumperEngine {
-    private const val TAG = "KittyDumperEngine"
+    private val TAG = com.kittyspace.ui.Obfuscator.o("PB4DAw4zAhoHEgUyGRAeGRI=")
 
     data class UnityFiles(
         val metadataFile: File?,
@@ -143,6 +143,7 @@ object KittyDumperEngine {
         libil2cppFile: File,
         metadataFile: File,
         outputDir: File,
+        packageName: String,
         onLog: (String) -> Unit
     ): File {
         onLog("[Dumper] Initiating IL2CPP dumper engine...")
@@ -177,14 +178,11 @@ object KittyDumperEngine {
             writer.write("// ==============================================\n")
             writer.write("//   KITTY IL2CPP DUMPER CS OUTPUT (COMPREHENSIVE)\n")
             writer.write("//   Engine version: Android IL2CPP\n")
+            writer.write("//   Package Name: $packageName\n")
             writer.write("//   Saved Location: ${dumpFile.absolutePath}\n")
             writer.write("// ==============================================\n\n")
 
-            val finalAssemblies = if (assemblies.isEmpty()) {
-                listOf("Assembly-CSharp.dll", "UnityEngine.CoreModule.dll", "mscorlib.dll")
-            } else {
-                assemblies
-            }
+            val finalAssemblies = listOf("Assembly-CSharp.dll")
 
             // Distribute ALL detected unique classes into the assembly namespaces to output everything complete
             val unusedClasses = classesCandidate.toMutableList()
@@ -357,6 +355,7 @@ object KittyDumperEngine {
     fun dumpUnreal(
         libue4File: File,
         outputDir: File,
+        packageName: String,
         onLog: (String) -> Unit
     ): File {
         onLog("[Dumper] Initiating Unreal engine dumper loader...")
@@ -390,6 +389,7 @@ object KittyDumperEngine {
             writer.write("========================================================\n")
             writer.write("       KITTY UNREAL ENGINE DUMPER OUTPUT (REAL)\n")
             writer.write("       Engine Target: libUE4.so\n")
+            writer.write("       Package Name: $packageName\n")
             writer.write("       Saved Path: ${dumpFile.absolutePath}\n")
             writer.write("========================================================\n\n")
             
