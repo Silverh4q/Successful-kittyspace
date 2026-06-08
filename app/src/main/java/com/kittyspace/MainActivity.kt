@@ -673,8 +673,8 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
             val pm = context.packageManager
             val intent = pm.getLaunchIntentForPackage(pName)
             if (intent != null) {
-                // Setting flags to launch as if inside virtual container display
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+                // Setting flags to launch cleanly
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 context.startActivity(intent)
             } else {
                 Toast.makeText(context, "Sandbox Simulation Completed. Target APK missing launch intent.", Toast.LENGTH_LONG).show()
