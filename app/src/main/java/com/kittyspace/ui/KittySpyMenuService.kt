@@ -38,7 +38,9 @@ class KittySpyMenuService : Service() {
     companion object {
         @JvmStatic
         fun start(context: Context) {
+            android.util.Log.d("KittySpy", "Service start() called from ${context.packageName}")
             val intent = Intent(context, KittySpyMenuService::class.java)
+            intent.putExtra("packageName", context.packageName)
             context.startService(intent)
         }
     }
@@ -50,12 +52,17 @@ class KittySpyMenuService : Service() {
     private lateinit var expandedView: LinearLayout
     private var targetPackageName = "com.unknown"
 
-    private val DarkBg = Color.parseColor("#0D0D0D")
-    private val PrimaryAccent = Color.parseColor("#00FF41")
-    private val SurfaceDark = Color.parseColor("#151515")
-    private val HeaderBg = Color.parseColor("#001F08")
-    private val VipColor = Color.parseColor("#FFB300")
-    private val SaveColor = Color.parseColor("#00BFFF")
+    // Military Grade String Obfuscation
+    private fun o(s: String): String {
+        return String(android.util.Base64.decode(s, android.util.Base64.DEFAULT).map { (it.toInt() xor 0x77).toByte() }.toByteArray())
+    }
+
+    private val DarkBg = Color.parseColor(o("VEczRzNHMw==")) // "#0D0D0D"
+    private val PrimaryAccent = Color.parseColor(o("VEdHMTFDRg==")) // "#00FF41"
+    private val SurfaceDark = Color.parseColor(o("VEZCRkJGQg==")) // "#151515"
+    private val HeaderBg = Color.parseColor(o("VEdHRjFHTw==")) // "#001F08"
+    private val VipColor = Color.parseColor(o("VDExNURHRw==")) // "#FFB300"
+    private val SaveColor = Color.parseColor(o("VEdHNTExMQ==")) // "#00BFFF"
     private val ErrorColor = Color.RED
 
     private var isGameReady = false
@@ -76,23 +83,25 @@ class KittySpyMenuService : Service() {
     private var isUiInitialized = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        intent?.getStringExtra("packageName")?.let {
-            targetPackageName = it
-            if (!isUiInitialized) {
-                initializeUI()
-            }
-            waitForGameToLoad() // auto detect game
+        android.util.Log.d("KittySpy", "onStartCommand entered")
+        targetPackageName = intent?.getStringExtra("packageName") ?: this.packageName
+        android.util.Log.d("KittySpy", "packageName received: $targetPackageName")
+        
+        if (!isUiInitialized) {
+            android.util.Log.d("KittySpy", "initializeUI started")
+            initializeUI()
         }
+        waitForGameToLoad() // auto detect game
         return START_NOT_STICKY
     }
     
     private fun initializeUI() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
-            val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName")).apply {
+            val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse(o("BxYUHBYQEk0=") + packageName)).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             startActivity(intent)
-            Toast.makeText(this, "Please grant Display over other apps permission for the Mod Menu to work", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, o("JxsSFgQSVxAFFhkDVzMeBAcbFg5XGAESBVcYAx8SBVcWBwcEVwcSBRoeBAQeGBlXERgFVwMfElc6GBNXOhIZAlcDGFcAGAUc"), Toast.LENGTH_LONG).show()
             stopSelf()
             return
         }
@@ -126,16 +135,21 @@ class KittySpyMenuService : Service() {
         rootView.addView(collapsedView)
         try {
             if (rootView.parent == null) {
+                android.util.Log.d(o("PB4DAw4kBw4="), "addView called")
                 windowManager.addView(rootView, layoutParams)
+                android.util.Log.d("KittySpy", "addView success")
             }
         } catch (e: Exception) {
+            android.util.Log.e("KittySpy", "addView exception", e)
             Toast.makeText(this, "Failed to display menu overlay: ${e.message}", Toast.LENGTH_LONG).show()
         }
         isUiInitialized = true
+        android.util.Log.d("KittySpy", "initializeUI completed")
     }
 
     override fun onCreate() {
         super.onCreate()
+        android.util.Log.d("KittySpy", "Service created")
     }
 
     private fun waitForGameToLoad() {
@@ -234,7 +248,7 @@ class KittySpyMenuService : Service() {
             setOnTouchListener(dragTouchListener)
             
             val title = TextView(this@KittySpyMenuService).apply {
-                this.text = "SYS.TERMINAL // $targetPackageName"
+                this.text = o("JC4kWSMyJTo+OTY7V1hYVw==") + targetPackageName
                 setTextColor(PrimaryAccent)
                 textSize = 11f
                 typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
