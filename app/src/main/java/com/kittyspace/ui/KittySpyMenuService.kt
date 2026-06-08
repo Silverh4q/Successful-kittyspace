@@ -124,6 +124,13 @@ class KittySpyMenuService : Service() {
 
         rootView.addView(expandedView)
         rootView.addView(collapsedView)
+        try {
+            if (rootView.parent == null) {
+                windowManager.addView(rootView, layoutParams)
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to display menu overlay: ${e.message}", Toast.LENGTH_LONG).show()
+        }
         isUiInitialized = true
     }
 
@@ -141,10 +148,13 @@ class KittySpyMenuService : Service() {
                 isGameReady = true
                 Toast.makeText(this@KittySpyMenuService, "Game Ready. KittySpy Active", Toast.LENGTH_LONG).show()
                 try {
-                    windowManager.addView(rootView, layoutParams)
+                    if (rootView.parent == null) {
+                        windowManager.addView(rootView, layoutParams)
+                    } else {
+                        windowManager.updateViewLayout(rootView, layoutParams)
+                    }
                 } catch (e: Exception) {
-                    Toast.makeText(this@KittySpyMenuService, "Failed to inject Mod Menu: ${e.message}", Toast.LENGTH_LONG).show()
-                    stopSelf()
+                    Toast.makeText(this@KittySpyMenuService, "Error initializing Mod Menu layout: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }

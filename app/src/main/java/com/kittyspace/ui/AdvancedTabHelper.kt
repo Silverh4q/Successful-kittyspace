@@ -22,7 +22,7 @@ import com.kittyspace.R
 import android.content.Intent
 import java.util.concurrent.CopyOnWriteArrayList
 
-data class CachedMethod(
+data class LoadedMethod(
     val lineStr: String,
     val methodName: String,
     val isField: Boolean,
@@ -33,17 +33,17 @@ data class CachedMethod(
     var isWatched: Boolean = false
 )
 
-data class CachedClass(
+data class LoadedClass(
     val lineStr: String,
     val className: String,
-    val items: MutableList<CachedMethod> = mutableListOf()
+    val items: MutableList<LoadedMethod> = mutableListOf()
 )
 
 object AdvancedTabHelper {
 
     private fun Int.dp(context: Context): Int = (this * context.resources.displayMetrics.density).toInt()
 
-    private var runtimeCache = mutableListOf<CachedClass>()
+    private var runtimeList = mutableListOf<LoadedClass>()
     private var engineDetected = "Parsing..."
     private var isConnected = "Disconnected"
     private var methodCount = 0
@@ -232,10 +232,10 @@ object AdvancedTabHelper {
         }
         root.addView(btnClear)
         
-        var currentRenderedCache = mutableListOf<CachedClass>()
+        var currentRenderedList = mutableListOf<LoadedClass>()
 
-        fun renderUi(items: List<CachedClass>, updateStatus: Boolean = true) {
-            currentRenderedCache = items.toMutableList()
+        fun renderUi(items: List<LoadedClass>, updateStatus: Boolean = true) {
+            currentRenderedList = items.toMutableList()
             listContainer.removeAllViews()
             var totalAdded = 0
             
@@ -276,7 +276,7 @@ object AdvancedTabHelper {
             if(updateStatus) statusText.text = "$totalAdded results found."
         }
         
-        fun loadEntireGameCache() {
+        fun loadEntireGameData() {
             statusText.text = "Searching... parsing game data..."
             listContainer.removeAllViews()
             Thread {
@@ -287,36 +287,36 @@ object AdvancedTabHelper {
                 } catch (e: Exception) {}
                 
                 val dumped = NativeDumper.dumpGameFunctions(pkg, apkPath)
-                val tempCache = mutableListOf<CachedClass>()
-                var currentClass: CachedClass? = null
+                val tempData = mutableListOf<LoadedClass>()
+                var currentClass: LoadedClass? = null
                 
                 for (line in dumped) {
                     if (line.startsWith("[Class] ")) {
                         val className = line.removePrefix("[Class] ")
-                        currentClass = CachedClass(line, className)
-                        tempCache.add(currentClass)
+                        currentClass = LoadedClass(line, className)
+                        tempData.add(currentClass)
                     } else if (line.startsWith("  [Method] ") && currentClass != null) {
                         val mName = line.substringAfter("] ").substringBefore(" :")
                         var rva = "0x0"
                         if (line.contains("RVA ")) rva = line.substringAfter("RVA 0x").substringBefore(" ").trim()
-                        currentClass.items.add(CachedMethod(line, mName, false, rva))
+                        currentClass.items.add(LoadedMethod(line, mName, false, rva))
                     } else if (line.startsWith("  [Field] ") && currentClass != null) {
                         val parsedName = line.substringAfter("] ")
                         var offset = "0x0"
                         if (parsedName.contains("Offset 0x")) {
                             offset = parsedName.substringAfter("Offset 0x").substringBefore(" ").trim()
                         }
-                        currentClass.items.add(CachedMethod(line, parsedName, true, "0x0", offset))
+                        currentClass.items.add(LoadedMethod(line, parsedName, true, "0x0", offset))
                     }
                 }
                 
-                tempCache.sortBy { it.className }
-                runtimeCache = tempCache
-                engineDetected = if (tempCache.isNotEmpty()) "UNITY" else "UNKNOWN" // Simple fallback
+                tempData.sortBy { it.className }
+                runtimeList = tempData
+                engineDetected = if (tempData.isNotEmpty()) "UNITY" else "UNKNOWN" // Simple fallback
                 
                 Handler(Looper.getMainLooper()).post {
-                    renderUi(runtimeCache, false)
-                    statusText.text = "Loaded active current classes of the game (${runtimeCache.size} classes)"
+                    renderUi(runtimeList, false)
+                    statusText.text = "Loaded active current classes of the game (${runtimeList.size} classes)"
                 }
             }.start()
         }
@@ -332,19 +332,19 @@ object AdvancedTabHelper {
                 statusText.text = "Searching..."
                 listContainer.removeAllViews()
                 
-                val results = mutableListOf<CachedClass>()
+                val results = mutableListOf<LoadedClass>()
                 var totalFoundCount = 0
                 
                 withContext(Dispatchers.Default) {
                     if (isSearchAll) {
                         var chunkCtr = 0
-                        for (cls in runtimeCache) {
+                        for (cls in runtimeList) {
                             chunkCtr++
                             if (chunkCtr % 50 == 0) delay(5) // 5ms rest to prevent freezing
                             
                             val matches = cls.items.filter { it.methodName.lowercase().contains(query) }
                             if (matches.isNotEmpty() || cls.className.lowercase().contains(query)) {
-                                val matchClass = CachedClass(cls.lineStr, cls.className, matches.toMutableList())
+                                val matchClass = LoadedClass(cls.lineStr, cls.className, matches.toMutableList())
                                 if (matches.isEmpty()) matchClass.items.addAll(cls.items)
                                 results.add(matchClass)
                                 totalFoundCount += matchClass.items.size
@@ -353,18 +353,18 @@ object AdvancedTabHelper {
                     } else {
                         // find class first
                         var chunkCtr = 0
-                        var targetClsCache: CachedClass? = null
-                        for (cls in runtimeCache) {
+                        var targetClsData: LoadedClass? = null
+                        for (cls in runtimeList) {
                             chunkCtr++
                             if (chunkCtr % 50 == 0) delay(5)
                             if (cls.className.lowercase().contains(tClass)) {
-                                targetClsCache = cls
+                                targetClsData = cls
                                 break
                             }
                         }
-                        if (targetClsCache != null) {
-                            val matches = targetClsCache.items.filter { it.methodName.lowercase().contains(query) }
-                            results.add(CachedClass(targetClsCache.lineStr, targetClsCache.className, matches.toMutableList()))
+                        if (targetClsData != null) {
+                            val matches = targetClsData.items.filter { it.methodName.lowercase().contains(query) }
+                            results.add(LoadedClass(targetClsData.lineStr, targetClsData.className, matches.toMutableList()))
                             totalFoundCount += matches.size
                         }
                     }
@@ -380,13 +380,13 @@ object AdvancedTabHelper {
         
         btnClear.setOnClickListener {
             // Revert back to full list
-            renderUi(runtimeCache, false)
-            statusText.text = "Loaded active current classes of the game (${runtimeCache.size} classes)"
+            renderUi(runtimeList, false)
+            statusText.text = "Loaded active current classes of the game (${runtimeList.size} classes)"
         }
         
         btnSave.setOnClickListener {
             // generate save string
-            val isFull = (currentRenderedCache.size == runtimeCache.size)
+            val isFull = (currentRenderedList.size == runtimeList.size)
             val sb = StringBuilder()
             
             if (!isFull) {
@@ -398,7 +398,7 @@ object AdvancedTabHelper {
                 sb.append("KITTY SPY RUNTIME DUMPER FROM GAME $pkg\n\n")
             }
             
-            for (cls in currentRenderedCache) {
+            for (cls in currentRenderedList) {
                 if (engineDetected == "UNITY") {
                     sb.append("|-Classes:= ${cls.className}\n")
                     val fields = cls.items.filter { it.isField }
@@ -453,7 +453,7 @@ object AdvancedTabHelper {
         
         btnStartDump.setOnClickListener {
             btnStartDump.visibility = View.GONE
-            loadEntireGameCache()
+            loadEntireGameData()
         }
 
         return root
@@ -528,11 +528,11 @@ object AdvancedTabHelper {
         }
         root.addView(inspectedListText)
         
-        var resolvedTarget: CachedMethod? = null
-        var resolvedClass: CachedClass? = null
+        var resolvedTarget: LoadedMethod? = null
+        var resolvedClass: LoadedClass? = null
         
         // Polling loop for active watches
-        val watchedItems = mutableListOf<CachedMethod>()
+        val watchedItems = mutableListOf<LoadedMethod>()
         
         fun updateWatchedListText() {
             val sb = StringBuilder("-----------------------------------\nINSPECTED TARGETS\n\n")
@@ -571,10 +571,10 @@ object AdvancedTabHelper {
         
         btnResolve.setOnClickListener {
             val rvaQ = rvaInput.text.toString().trim().lowercase().removePrefix("0x")
-            var foundC: CachedClass? = null
-            var foundM: CachedMethod? = null
+            var foundC: LoadedClass? = null
+            var foundM: LoadedMethod? = null
             
-            for (cls in runtimeCache) {
+            for (cls in runtimeList) {
                 for (item in cls.items) {
                     if (!item.isField && item.rva.lowercase() == rvaQ) {
                         foundM = item
