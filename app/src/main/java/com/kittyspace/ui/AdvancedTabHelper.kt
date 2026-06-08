@@ -202,13 +202,22 @@ object AdvancedTabHelper {
         root.addView(searchCard)
 
         val statusText = TextView(context).apply {
-            text = "0 results found."
+            text = "Ready. Click Dump to start parsing."
             setTextColor(Color.parseColor("#FFB300"))
             textSize = 11f
             typeface = Typeface.MONOSPACE
             setPadding(0, 0, 0, 8.dp(context))
         }
         root.addView(statusText)
+
+        val btnStartDump = Button(context).apply {
+            text = "START RUNTIME DUMP"
+            setTextColor(Color.WHITE)
+            textSize = 11f
+            setBackgroundColor(Color.parseColor("#008800"))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8.dp(context) }
+        }
+        root.addView(btnStartDump)
 
         val listScroll = ScrollView(context).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f) }
         val listContainer = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
@@ -442,8 +451,10 @@ object AdvancedTabHelper {
             }
         }
         
-        // Auto load classes once layout is created
-        loadEntireGameCache()
+        btnStartDump.setOnClickListener {
+            btnStartDump.visibility = View.GONE
+            loadEntireGameCache()
+        }
 
         return root
     }
@@ -535,6 +546,8 @@ object AdvancedTabHelper {
             while (true) {
                 Thread.sleep(1000)
                 try {
+                    if (watchedItems.isEmpty()) continue
+                    
                     val events = NativeDumper.pollHookEvents()
                     var changed = false
                     for (e in events) {
