@@ -520,7 +520,9 @@ Java_com_kittyspace_NativeDumper_dumpGameFunctions(
     jclass stringClass = env->FindClass("java/lang/String");
     jobjectArray result = env->NewObjectArray(dumpedFunctions.size(), stringClass, nullptr);
     for (size_t i = 0; i < dumpedFunctions.size(); i++) {
-        env->SetObjectArrayElement(result, i, env->NewStringUTF(dumpedFunctions[i].c_str()));
+        jstring str = env->NewStringUTF(dumpedFunctions[i].c_str());
+        env->SetObjectArrayElement(result, i, str);
+        env->DeleteLocalRef(str);
     }
     return result;
 }

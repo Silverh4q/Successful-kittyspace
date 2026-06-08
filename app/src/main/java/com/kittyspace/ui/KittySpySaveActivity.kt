@@ -17,32 +17,21 @@ class KittySpySaveActivity : Activity() {
         super.onCreate(savedInstanceState)
         val fileName = intent.getStringExtra("fileName") ?: "kittyspy.py"
         
-        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "*/*"
-            putExtra(Intent.EXTRA_TITLE, fileName)
-            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/plain", "application/octet-stream"))
+        try {
+            val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOCUMENTS), "KittyDumper/ManualSaves")
+            dir.mkdirs()
+            val file = java.io.File(dir, fileName)
+            file.writeText(dataToSave)
+            Toast.makeText(this, com.kittyspace.ui.Obfuscator.o("JBYBEhNXBAIUFBIEBBECGxsOVwMYVzMYFAIaEhkDBFg8HgMDDjMCGgcSBVg6FhkCFhskFgESBFhTER4bEjkWGhI="), Toast.LENGTH_LONG).show()
+        } catch(e: Exception) {
+            Toast.makeText(this, com.kittyspace.ui.Obfuscator.o("JBYBElcRFh4bEhNNV1MMElkaEgQEFhASCg=="), Toast.LENGTH_LONG).show()
         }
-        
-        startActivityForResult(intent, CREATE_FILE)
+        dataToSave = ""
+        finish()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == CREATE_FILE && resultCode == RESULT_OK) {
-            data?.data?.let { uri ->
-                try {
-                    contentResolver.openOutputStream(uri)?.use { outputStream ->
-                        outputStream.write(dataToSave.toByteArray())
-                    }
-                    Toast.makeText(this, "Saved successfully!", Toast.LENGTH_SHORT).show()
-                } catch (e: Exception) {
-                    Toast.makeText(this, "Save failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-        dataToSave = ""
-        finish()
     }
 }
 

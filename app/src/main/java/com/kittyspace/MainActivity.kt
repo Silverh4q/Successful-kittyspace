@@ -586,7 +586,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                     pendingChoiceApp = app
                     selectedTab = 0
                     com.kittyspace.KittyDumpManager.addLog("[SYS]::AUTO-LINKED UNITY TARGET [${app.appName.uppercase()}]")
-                    Toast.makeText(context, "Unity game assets loaded successfully!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("IhkeAw5XEBYaElcWBAQSAwRXGxgWExITVwQCFBQSBAQRAhsbDlY="), Toast.LENGTH_SHORT).show()
                 } else {
                     scanErrorDialogText = "Failed to extract required Unity IL2CPP assets: ${result.error ?: "No matching architecture found (ARM64 usually preferred)"}"
                 }
@@ -619,7 +619,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                     pendingChoiceApp = app
                     selectedTab = 1
                     com.kittyspace.KittyDumpManager.addLog("[SYS]::AUTO-LINKED UNREAL TARGET [${app.appName.uppercase()}]")
-                    Toast.makeText(context, "Unreal game library loaded successfully!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("IhkFEhYbVxAWGhJXGx4VBRYFDlcbGBYTEhNXBAIUFBIEBBECGxsOVg=="), Toast.LENGTH_SHORT).show()
                 } else {
                     scanErrorDialogText = "Failed to extract sub-architecture from Unreal APK: ${result.error ?: "No matching architecture found (ARM64 usually preferred)"}"
                 }
@@ -677,10 +677,10 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 context.startActivity(intent)
             } else {
-                Toast.makeText(context, "Sandbox Simulation Completed. Target APK missing launch intent.", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("JBYZExUYD1ckHhoCGxYDHhgZVzQYGgcbEgMSE1lXIxYFEBIDVzYnPFcaHgQEHhkQVxsWAhkUH1ceGQMSGQNZ"), Toast.LENGTH_LONG).show()
             }
         } catch (e: Exception) {
-            Toast.makeText(context, "Error starting sandbox: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("MgUFGAVXBAMWBQMeGRBXBBYZExUYD01XUwwSWRoSBAQWEBIK"), Toast.LENGTH_SHORT).show()
         }
         launchingApp = null
     }
@@ -1014,7 +1014,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         if (selectedTab == 0) {
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 Text(
-                                    "[MODE_A]::EXTRAPOLATE_ACTIVE_SPACE_APP",
+                                    com.kittyspace.ui.Obfuscator.o("LDo4MzIoNipNTTIvIyU2Jzg7NiMyKDY0Iz4hMigkJzY0Mig2Jyc="),
                                     fontSize = 10.sp,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
@@ -1035,7 +1035,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(selectedSpaceApp!!.appName.uppercase(), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, color = TextLight, fontSize = 12.sp)
-                                            Text("pkg: ${selectedSpaceApp!!.packageName}", color = TextMuted, fontFamily = FontFamily.Monospace, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text(com.kittyspace.ui.Obfuscator.o("BxwQTVdTDAQSGxIUAxITJAcWFBI2BwdWVlkHFhQcFhASORYaEgo="), color = TextMuted, fontFamily = FontFamily.Monospace, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         }
                                         Button(
                                             onClick = { viewModel.dumpUnityFromKittySpace(selectedSpaceApp!!) },
@@ -1050,7 +1050,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp))
                                                     Spacer(modifier = Modifier.width(2.dp))
-                                                    Text("RUN_DUMP", fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                                                    Text(com.kittyspace.ui.Obfuscator.o("JSI5KDMiOic="), fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                                                 }
                                             }
                                         }
@@ -1064,14 +1064,14 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                             .padding(10.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text("[SYS] Awaiting target payload binding in KittySpace", color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                                        Text(com.kittyspace.ui.Obfuscator.o("LCQuJCpXNgAWHgMeGRBXAxYFEBIDVwcWDhsYFhNXFR4ZEx4ZEFceGVc8HgMDDiQHFhQS"), color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                                     }
                                 }
 
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text(
-                                    "[MODE_B]::MANUAL_BINARY_LOADER_FILES",
+                                    com.kittyspace.ui.Obfuscator.o("LDo4MzIoNSpNTTo2OSI2Oyg1Pjk2JS4oOzg2MzIlKDE+OzIk"),
                                     fontSize = 11.sp,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
@@ -1085,7 +1085,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text("global-metadata.dat file", fontSize = 10.sp, color = TextMuted)
+                                        Text(com.kittyspace.ui.Obfuscator.o("EBsYFRYbWhoSAxYTFgMWWRMWA1cRHhsS"), fontSize = 10.sp, color = TextMuted)
                                         Text(
                                             text = selectedUnityMetadataName ?: "Not selected (Locate file)",
                                             color = if (selectedUnityMetadataUri != null) TextLight else TextMuted,
@@ -1117,7 +1117,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text("libil2cpp.so binary", fontSize = 10.sp, color = TextMuted)
+                                        Text(com.kittyspace.ui.Obfuscator.o("Gx4VHhtFFAcHWQQYVxUeGRYFDg=="), fontSize = 10.sp, color = TextMuted)
                                         Text(
                                             text = selectedUnityLibName ?: "Not selected (Locate binary)",
                                             color = if (selectedUnityLibUri != null) TextLight else TextMuted,
@@ -1157,7 +1157,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                                     viewModel.dumpUnityFromStorage(mStr, lStr)
                                                 }
                                             } catch (e: Exception) {
-                                                Toast.makeText(context, "${e.message}", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("UwwSWRoSBAQWEBIK"), Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     },
@@ -1168,14 +1168,14 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                 ) {
                                     Icon(Icons.Default.PlayArrow, contentDescription = null)
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("NATIVE EXTRACT CONSTRUCT DUMP", fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, letterSpacing = 0.5.sp, fontSize = 12.sp)
+                                    Text(com.kittyspace.ui.Obfuscator.o("OTYjPiEyVzIvIyU2NCNXNDg5JCMlIjQjVzMiOic="), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, letterSpacing = 0.5.sp, fontSize = 12.sp)
                                 }
                             }
                         } else {
                             // UNREAL SECTION
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 Text(
-                                    "[MODE_A]::EXTRAPOLATE_ACTIVE_SPACE_APP",
+                                    com.kittyspace.ui.Obfuscator.o("LDo4MzIoNipNTTIvIyU2Jzg7NiMyKDY0Iz4hMigkJzY0Mig2Jyc="),
                                     fontSize = 10.sp,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
@@ -1196,7 +1196,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(selectedSpaceApp!!.appName.uppercase(), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, color = TextLight, fontSize = 12.sp)
-                                            Text("pkg: ${selectedSpaceApp!!.packageName}", color = TextMuted, fontFamily = FontFamily.Monospace, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text(com.kittyspace.ui.Obfuscator.o("BxwQTVdTDAQSGxIUAxITJAcWFBI2BwdWVlkHFhQcFhASORYaEgo="), color = TextMuted, fontFamily = FontFamily.Monospace, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         }
                                         Button(
                                             onClick = { viewModel.dumpUnrealFromKittySpace(selectedSpaceApp!!) },
@@ -1211,7 +1211,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp))
                                                     Spacer(modifier = Modifier.width(2.dp))
-                                                    Text("RUN_DUMP", fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                                                    Text(com.kittyspace.ui.Obfuscator.o("JSI5KDMiOic="), fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                                                 }
                                             }
                                         }
@@ -1225,14 +1225,14 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                             .padding(10.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text("[SYS] Awaiting target payload binding in KittySpace", color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                                        Text(com.kittyspace.ui.Obfuscator.o("LCQuJCpXNgAWHgMeGRBXAxYFEBIDVwcWDhsYFhNXFR4ZEx4ZEFceGVc8HgMDDiQHFhQS"), color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                                     }
                                 }
 
                                 Spacer(modifier = Modifier.height(14.dp))
 
                                 Text(
-                                    "[MODE_B]::MANUAL_BINARY_LOADER_FILES",
+                                    com.kittyspace.ui.Obfuscator.o("LDo4MzIoNSpNTTo2OSI2Oyg1Pjk2JS4oOzg2MzIlKDE+OzIk"),
                                     fontSize = 10.sp,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
@@ -1245,7 +1245,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text("libUE4.so binary ELF", fontSize = 9.sp, fontFamily = FontFamily.Monospace, color = TextMuted)
+                                        Text(com.kittyspace.ui.Obfuscator.o("Gx4VIjJDWQQYVxUeGRYFDlcyOzE="), fontSize = 9.sp, fontFamily = FontFamily.Monospace, color = TextMuted)
                                         Text(
                                             text = selectedUnrealLibName ?: "Not selected (Locate unreal lib)",
                                             color = if (selectedUnrealLibUri != null) TextLight else TextMuted,
@@ -1283,7 +1283,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                                     viewModel.dumpUnrealFromStorage(lStr)
                                                 }
                                             } catch (e: Exception) {
-                                                Toast.makeText(context, "${e.message}", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("UwwSWRoSBAQWEBIK"), Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     },
@@ -1294,7 +1294,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                 ) {
                                     Icon(Icons.Default.PlayArrow, contentDescription = null)
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("RUN NATIVE CORE SYMBOL EXTRACTOR", fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, letterSpacing = 0.5.sp, fontSize = 12.sp)
+                                    Text(com.kittyspace.ui.Obfuscator.o("JSI5Vzk2Iz4hMlc0OCUyVyQuOjU4O1cyLyMlNjQjOCU="), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, letterSpacing = 0.5.sp, fontSize = 12.sp)
                                 }
                             }
                         }
@@ -1327,7 +1327,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    "Terminal Logs Console",
+                                    com.kittyspace.ui.Obfuscator.o("IxIFGh4ZFhtXOxgQBFc0GBkEGBsS"),
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
@@ -1549,7 +1549,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         border = BorderStroke(1.dp, AccentPink),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("1. CONTINUE TO DUMP", color = AccentPink, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        Text(com.kittyspace.ui.Obfuscator.o("RllXNDg5Iz45IjJXIzhXMyI6Jw=="), color = AccentPink, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     
@@ -1562,7 +1562,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         border = BorderStroke(1.dp, Color(0xFF00E676)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("2. LAUNCH (INJECT)", color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        Text(com.kittyspace.ui.Obfuscator.o("RVlXOzYiOTQ/V18+OT0yNCNe"), color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     
@@ -1572,7 +1572,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         border = BorderStroke(1.dp, BoundaryGray),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("3. ABORT", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        Text(com.kittyspace.ui.Obfuscator.o("RFlXNjU4JSM="), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     }
                 }
             }
@@ -1683,7 +1683,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF222222)),
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                     ) {
-                        Text("Gmail", color = Color.White, fontFamily = FontFamily.Monospace)
+                        Text(com.kittyspace.ui.Obfuscator.o("MBoWHhs="), color = Color.White, fontFamily = FontFamily.Monospace)
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -1698,7 +1698,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00BFFF)),
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                     ) {
-                        Text("Telegram", color = Color.White, fontFamily = FontFamily.Monospace)
+                        Text(com.kittyspace.ui.Obfuscator.o("IxIbEhAFFho="), color = Color.White, fontFamily = FontFamily.Monospace)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -1708,7 +1708,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         border = BorderStroke(1.dp, Color(0xFF00E676)),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF00E676))
                     ) {
-                        Text("CLOSE", fontFamily = FontFamily.Monospace)
+                        Text(com.kittyspace.ui.Obfuscator.o("NDs4JDI="), fontFamily = FontFamily.Monospace)
                     }
                 }
             }
@@ -1802,7 +1802,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         GlowPawPrint(modifier = Modifier.size(34.dp))
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            "AUTO-INJECTOR & REPACKAGER",
+                            com.kittyspace.ui.Obfuscator.o("NiIjOFo+OT0yNCM4JVdRVyUyJzY0PDYwMiU="),
                             color = Color(0xFF00E676),
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
@@ -1856,7 +1856,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                             strokeWidth = 2.dp
                         )
                         Text(
-                            "DETOUR INJECTOR ACTIVE",
+                            com.kittyspace.ui.Obfuscator.o("MzIjOCIlVz45PTI0IzglVzY0Iz4hMg=="),
                             color = TextMuted,
                             fontSize = 10.sp,
                             fontFamily = FontFamily.Monospace
@@ -1867,7 +1867,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                             shape = RoundedCornerShape(6.dp),
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                         ) {
-                            Text("ABORT", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(com.kittyspace.ui.Obfuscator.o("NjU4JSM="), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -1893,7 +1893,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "VIP ACCESS REQUIRED",
+                        text = com.kittyspace.ui.Obfuscator.o("IT4nVzY0NDIkJFclMiYiPiUyMw=="),
                         color = Color(0xFFFFB300),
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
@@ -1925,7 +1925,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         ),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        placeholder = { Text("Enter VIP Key", color = TextMuted) },
+                        placeholder = { Text(com.kittyspace.ui.Obfuscator.o("MhkDEgVXIT4nVzwSDg=="), color = TextMuted) },
                         visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
                     )
 
@@ -1957,7 +1957,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                     context.startService(intent)
                                     launchingApp = appToLaunch
                                 } else {
-                                    Toast.makeText(context, "Please allow 'Display over other apps'", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("JxsSFgQSVxYbGxgAV1AzHgQHGxYOVxgBEgVXGAMfEgVXFgcHBFA="), Toast.LENGTH_LONG).show()
                                     context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${context.packageName}")))
                                 }
                             } else {
@@ -1968,7 +1968,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         border = BorderStroke(1.dp, Color(0xFFFFB300)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("VERIFY", color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        Text(com.kittyspace.ui.Obfuscator.o("ITIlPjEu"), color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     }
                     
                     Spacer(modifier = Modifier.height(10.dp))
@@ -1979,7 +1979,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         border = BorderStroke(1.dp, BoundaryGray),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("CANCEL", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        Text(com.kittyspace.ui.Obfuscator.o("NDY5NDI7"), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     }
                 }
             }
@@ -2000,16 +2000,16 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                 Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(imageVector = Icons.Default.Lock, contentDescription = "VIP", tint = Color(0xFFFFB300), modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("VIP ACCESS REQUIRED", color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(com.kittyspace.ui.Obfuscator.o("IT4nVzY0NDIkJFclMiYiPiUyMw=="), color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Please enter your VIP Injector key to access Native Mod Menu extraction.", color = Color.Gray, fontSize = 12.sp, textAlign = TextAlign.Center)
+                    Text(com.kittyspace.ui.Obfuscator.o("JxsSFgQSVxIZAxIFVw4YAgVXIT4nVz4ZHRIUAxgFVxwSDlcDGFcWFBQSBARXORYDHgESVzoYE1c6EhkCVxIPAwUWFAMeGBlZ"), color = Color.Gray, fontSize = 12.sp, textAlign = TextAlign.Center)
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     val primaryDark = Color(0xFF1E1E1E)
                     OutlinedTextField(
                         value = vipKeyInput,
                         onValueChange = { vipKeyInput = it; isError = false },
-                        label = { Text("VIP Key") },
+                        label = { Text(com.kittyspace.ui.Obfuscator.o("IT4nVzwSDg==")) },
                         isError = isError,
                         visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password),
@@ -2023,7 +2023,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                     )
                     
                     if (isError) {
-                        Text("Invalid Key. Validation failed.", color = AccentPink, fontSize = 10.sp, modifier = Modifier.align(Alignment.Start).padding(top = 4.dp))
+                        Text(com.kittyspace.ui.Obfuscator.o("PhkBFhseE1c8Eg5ZVyEWGx4TFgMeGBlXERYeGxITWQ=="), color = AccentPink, fontSize = 10.sp, modifier = Modifier.align(Alignment.Start).padding(top = 4.dp))
                     }
                     
                     Spacer(modifier = Modifier.height(24.dp))
@@ -2046,7 +2046,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         border = BorderStroke(1.dp, Color(0xFFFFB300)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("VERIFY", color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        Text(com.kittyspace.ui.Obfuscator.o("ITIlPjEu"), color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedButton(
@@ -2055,7 +2055,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         border = BorderStroke(1.dp, BoundaryGray),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("CANCEL", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        Text(com.kittyspace.ui.Obfuscator.o("NDY5NDI7"), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     }
                 }
             }
@@ -2074,40 +2074,40 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-                    Text("HOW TO INJECT KITTYSPY MOD MENU", color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(com.kittyspace.ui.Obfuscator.o("PzggVyM4Vz45PTI0I1c8PiMjLiQnLlc6ODNXOjI5Ig=="), color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Box wrapper for scrollable content so we can leave room for the button
                     Box(modifier = Modifier.weight(1f)) {
                         androidx.compose.foundation.lazy.LazyColumn {
                             item {
-                                Text("This tutorial illustrates how to integrate the KittySpy Native Mod Menu into your target APk.", color = Color.LightGray, fontSize = 12.sp, lineHeight = 18.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("Ix8eBFcDAgMYBR4WG1ceGxsCBAMFFgMSBFcfGABXAxhXHhkDEhAFFgMSVwMfElc8HgMDDiQHDlc5FgMeARJXOhgTVzoSGQJXHhkDGFcOGAIFVwMWBRASA1c2JxxZ"), color = Color.LightGray, fontSize = 12.sp, lineHeight = 18.sp)
                                 Spacer(modifier = Modifier.height(16.dp))
                                 
-                                Text("STEP 1: DECOMPILE TARGET APK", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text("Use MT Manager to locate your APK. Decompile it or extract the files to a safe directory.", color = Color.Gray, fontSize = 12.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dGTVczMjQ4Oic+OzJXIzYlMDIjVzYnPA=="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("IgQSVzojVzoWGRYQEgVXAxhXGxgUFgMSVw4YAgVXNic8WVczEhQYGgceGxJXHgNXGAVXEg8DBRYUA1cDHxJXER4bEgRXAxhXFlcEFhESVxMeBRIUAxgFDlk="), color = Color.Gray, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                Text("STEP 2: ADD NATIVE LIBRARIES", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text("Extract 'libkittyspymenu.so' AND 'libkittydumper.so' from this injector app. Place them inside the 'lib/armeabi-v7a' or 'lib/arm64-v8a' directory of your target APK based on its architecture.", color = Color.Gray, fontSize = 12.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dFTVc2MzNXOTYjPiEyVzs+NSU2JT4yJA=="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("Mg8DBRYUA1dQGx4VHB4DAw4EBw4aEhkCWQQYUFc2OTNXUBseFRweAwMOEwIaBxIFWQQYUFcRBRgaVwMfHgRXHhkdEhQDGAVXFgcHWVcnGxYUElcDHxIaVx4ZBB4TElcDHxJXUBseFVgWBRoSFhUeWgFAFlBXGAVXUBseFVgWBRpBQ1oBTxZQVxMeBRIUAxgFDlcYEVcOGAIFVwMWBRASA1c2JzxXFRYEEhNXGBlXHgMEVxYFFB8eAxIUAwIFElk="), color = Color.Gray, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                Text("STEP 3: ADD DEX CLASSES", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text("Extract the classes.dex file containing 'com.kittyspace' (usually classes.dex or classes2.dex) from this app's root. Add it to your target APK, renaming it to continue the numerical sequence (e.g., if target ends at classes3.dex, name yours classes4.dex).\n\n(Note: You can still extract ALL dex files, but the Mod Menu is now rewritten in pure Android Views to completely eliminate Jetpack Compose crashes on all games!)", color = Color.Gray, fontSize = 12.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dETVc2MzNXMzIvVzQ7NiQkMiQ="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("Mg8DBRYUA1cDHxJXFBsWBAQSBFkTEg9XER4bElcUGBkDFh4ZHhkQV1AUGBpZHB4DAw4EBxYUElBXXwIEAhYbGw5XFBsWBAQSBFkTEg9XGAVXFBsWBAQSBEVZExIPXlcRBRgaVwMfHgRXFgcHUARXBRgYA1lXNhMTVx4DVwMYVw4YAgVXAxYFEBIDVzYnPFtXBRIZFhoeGRBXHgNXAxhXFBgZAx4ZAhJXAx8SVxkCGhIFHhQWG1cEEgYCEhkUEldfElkQWVtXHhFXAxYFEBIDVxIZEwRXFgNXFBsWBAQSBERZExIPW1cZFhoSVw4YAgUEVxQbFgQEEgRDWRMSD15ZKxkrGV85GAMSTVcuGAJXFBYZVwQDHhsbVxIPAwUWFANXNjs7VxMSD1cRHhsSBFtXFQIDVwMfElc6GBNXOhIZAlceBFcZGABXBRIABR4DAxIZVx4ZVwcCBRJXNhkTBRgeE1chHhIABFcDGFcUGBoHGxIDEhsOVxIbHhoeGRYDElc9EgMHFhQcVzQYGgcYBBJXFAUWBB8SBFcYGVcWGxtXEBYaEgRWXg=="), color = Color.Gray, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                Text("STEP 4: INJECT SERVICE IN MAINACTIVITY", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text("Identify the MainActivity of your game. Open it using MT Manager's Dex Editor and locate the 'onCreate' method. Paste the smali code below:", color = Color.Gray, fontSize = 12.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dDTVc+OT0yNCNXJDIlIT40Mlc+OVc6Nj45NjQjPiE+Iy4="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("PhMSGQMeEQ5XAx8SVzoWHhk2FAMeAR4DDlcYEVcOGAIFVxAWGhJZVzgHEhlXHgNXAgQeGRBXOiNXOhYZFhASBVAEVzMSD1cyEx4DGAVXFhkTVxsYFBYDElcDHxJXUBgZNAUSFgMSUFcaEgMfGBNZVycWBAMSVwMfElcEGhYbHlcUGBMSVxUSGxgATQ=="), color = Color.Gray, fontSize = 12.sp)
                                 
                                 Spacer(modifier = Modifier.height(8.dp))
                                 var isCopiedSnippet by remember { mutableStateOf(false) }
                                 
                                 Box(modifier = Modifier.background(Color(0xFF151515)).border(1.dp, Color(0xFF00E676)).padding(8.dp).fillMaxWidth()) {
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                        Text("invoke-static {p0}, Lcom/kittyspace/ui/KittySpyMenuService;->start(Landroid/content/Context;)V", color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                                        Text(com.kittyspace.ui.Obfuscator.o("HhkBGBwSWgQDFgMeFFcMB0cKW1c7FBgaWBweAwMOBAcWFBJYAh5YPB4DAw4kBw46EhkCJBIFAR4UEkxaSQQDFgUDXzsWGRMFGB4TWBQYGQMSGQNYNBgZAxIPA0xeIQ=="), color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
                                         IconButton(onClick = {
                                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("code", "invoke-static {p0}, Lcom/kittyspace/ui/KittySpyMenuService;->start(Landroid/content/Context;)V"))
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("FBgTEg=="), "invoke-static {p0}, Lcom/kittyspace/ui/KittySpyMenuService;->start(Landroid/content/Context;)V"))
                                             isCopiedSnippet = true
                                         }, modifier = Modifier.size(24.dp)) {
                                             Icon(
@@ -2127,10 +2127,10 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
 
-                                Text("STEP 5: UPDATE MANIFEST", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text("Open AndroidManifest.xml in MT Manager using XML Editor.", color = Color.Gray, fontSize = 12.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dCTVciJzM2IzJXOjY5PjEyJCM="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("OAcSGVc2GRMFGB4TOhYZHhESBANZDxobVx4ZVzojVzoWGRYQEgVXAgQeGRBXLzo7VzITHgMYBVk="), color = Color.Gray, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("A. Add the 'SYSTEM_ALERT_WINDOW' permission above the <application> tag:", color = Color.Gray, fontSize = 12.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("NllXNhMTVwMfEldQJC4kIzI6KDY7MiUjKCA+OTM4IFBXBxIFGh4EBB4YGVcWFRgBElcDHxJXSxYHBxseFBYDHhgZSVcDFhBN"), color = Color.Gray, fontSize = 12.sp)
                                 
                                 Spacer(modifier = Modifier.height(8.dp))
                                 var isCopiedPermission by remember { mutableStateOf(false) }
@@ -2141,7 +2141,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                         Text(permCode, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
                                         IconButton(onClick = {
                                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("manifest_perm", permCode))
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("GhYZHhESBAMoBxIFGg=="), permCode))
                                             isCopiedPermission = true
                                         }, modifier = Modifier.size(24.dp)) {
                                             Icon(
@@ -2161,7 +2161,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                 }
                                 
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Text("B. Declare the service inside the <application> tag:", color = Color.Gray, fontSize = 12.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("NVlXMxIUGxYFElcDHxJXBBIFAR4UElceGQQeExJXAx8SV0sWBwcbHhQWAx4YGUlXAxYQTQ=="), color = Color.Gray, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 var isCopiedService by remember { mutableStateOf(false) }
                                 
@@ -2171,7 +2171,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                         Text(serviceCode, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
                                         IconButton(onClick = {
                                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("manifest_service", serviceCode))
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("GhYZHhESBAMoBBIFAR4UEg=="), serviceCode))
                                             isCopiedService = true
                                         }, modifier = Modifier.size(24.dp)) {
                                             Icon(
@@ -2204,7 +2204,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         border = BorderStroke(1.dp, Color(0xFF00BFFF)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("KNOW YOUR GAME'S MAINACTIVITY", color = Color(0xFF00BFFF), fontFamily = FontFamily.Monospace, fontSize = 11.sp, textAlign = TextAlign.Center)
+                        Text(com.kittyspace.ui.Obfuscator.o("PDk4IFcuOCIlVzA2OjJQJFc6Nj45NjQjPiE+Iy4="), color = Color(0xFF00BFFF), fontFamily = FontFamily.Monospace, fontSize = 11.sp, textAlign = TextAlign.Center)
                     }
                     
                     Spacer(modifier = Modifier.height(8.dp))
@@ -2215,7 +2215,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         border = BorderStroke(1.dp, BoundaryGray),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("CLOSE", fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        Text(com.kittyspace.ui.Obfuscator.o("NDs4JDI="), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     }
 
                     if (showGameSelectDialog) {
@@ -2227,7 +2227,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                 border = BorderStroke(1.dp, Color(0xFF00BFFF))
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                    Text("Select App", color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text(com.kittyspace.ui.Obfuscator.o("JBIbEhQDVzYHBw=="), color = Color.White, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(8.dp))
                                     androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.weight(1f)) {
                                         items(installedApps) { appItem ->
@@ -2237,8 +2237,8 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                                 val mainAct = intent?.component?.className ?: "Unknown MainActivity"
                                                 
                                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("MainActivity", mainAct))
-                                                Toast.makeText(context, "Copied: $mainAct", Toast.LENGTH_LONG).show()
+                                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("OhYeGTYUAx4BHgMO"), mainAct))
+                                                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("NBgHHhITTVdTGhYeGTYUAw=="), Toast.LENGTH_LONG).show()
                                                 showGameSelectDialog = false
                                             }.padding(vertical = 12.dp)) {
                                                 Text(appItem.appName, color = Color.White, fontSize = 14.sp)
@@ -2246,7 +2246,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                         }
                                     }
                                     Button(onClick = { showGameSelectDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)) {
-                                        Text("CANCEL")
+                                        Text(com.kittyspace.ui.Obfuscator.o("NDY5NDI7"))
                                     }
                                 }
                             }
@@ -2270,13 +2270,13 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Add Apps to Kitty Space",
+                        com.kittyspace.ui.Obfuscator.o("NhMTVzYHBwRXAxhXPB4DAw5XJAcWFBI="),
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         color = AccentPink
                     )
                     Text(
-                        "Search and select applications/games on the device to add them directly to tracking space.",
+                        com.kittyspace.ui.Obfuscator.o("JBIWBRQfVxYZE1cEEhsSFANXFgcHGx4UFgMeGBkEWBAWGhIEVxgZVwMfElcTEgEeFBJXAxhXFhMTVwMfEhpXEx4FEhQDGw5XAxhXAwUWFBweGRBXBAcWFBJZ"),
                         color = TextMuted,
                         fontSize = 11.sp,
                         modifier = Modifier.padding(vertical = 4.dp)
@@ -2289,7 +2289,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Search installed application labels...", fontSize = 13.sp) },
+                        placeholder = { Text(com.kittyspace.ui.Obfuscator.o("JBIWBRQfVx4ZBAMWGxsSE1cWBwcbHhQWAx4YGVcbFhUSGwRZWVk="), fontSize = 13.sp) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = AccentPink) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = AccentPink,
@@ -2313,7 +2313,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 CircularProgressIndicator(color = AccentPink)
                                 Spacer(modifier = Modifier.height(10.dp))
-                                Text("Reading platform packages catalog...", color = TextMuted, fontSize = 12.sp)
+                                Text(com.kittyspace.ui.Obfuscator.o("JRIWEx4ZEFcHGxYDERgFGlcHFhQcFhASBFcUFgMWGxgQWVlZ"), color = TextMuted, fontSize = 12.sp)
                             }
                         }
                     } else {
@@ -2406,7 +2406,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         colors = ButtonDefaults.buttonColors(containerColor = AccentPink),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("CLOSE")
+                        Text(com.kittyspace.ui.Obfuscator.o("NDs4JDI="))
                     }
                 }
             }
@@ -2468,11 +2468,11 @@ fun copyDumpResultToClipboard(context: Context, file: File) {
         if (!file.exists()) return
         val text = file.readText()
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clip = ClipData.newPlainText("Kitty Dumper Output", text)
+        val clip = ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("PB4DAw5XMwIaBxIFVzgCAwcCAw=="), text)
         clipboard.setPrimaryClip(clip)
-        Toast.makeText(context, "Copied dump outputs to clipboard successfully!", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("NBgHHhITVxMCGgdXGAIDBwIDBFcDGFcUGx4HFRgWBRNXBAIUFBIEBBECGxsOVg=="), Toast.LENGTH_SHORT).show()
     } catch (e: Exception) {
-        Toast.makeText(context, "Failed to copy output: ${e.message}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("MRYeGxITVwMYVxQYBw5XGAIDBwIDTVdTDBJZGhIEBBYQEgo="), Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -2491,7 +2491,7 @@ fun shareDumpFileContents(context: Context, file: File) {
         shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(shareIntent)
     } catch (e: Exception) {
-        Toast.makeText(context, "Failed to initialize standard share provider: ${e.message}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("MRYeGxITVwMYVx4ZHgMeFhseDRJXBAMWGRMWBRNXBB8WBRJXBwUYAR4TEgVNV1MMElkaEgQEFhASCg=="), Toast.LENGTH_SHORT).show()
     }
 }
 

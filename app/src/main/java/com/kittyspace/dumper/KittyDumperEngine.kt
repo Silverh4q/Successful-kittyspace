@@ -26,7 +26,7 @@ object KittyDumperEngine {
 
     // Extracts global-metadata.dat and libil2cpp.so from the source APKs (including splits)
     fun extractUnityFromApk(apkPaths: List<String>, cacheDir: File, onLog: (String) -> Unit): UnityFiles {
-        onLog("[System] Analyzing ${apkPaths.size} APK source(s)...")
+        onLog(com.kittyspace.ui.Obfuscator.o("LCQOBAMSGipXNhkWGw4NHhkQV1MMFgccJxYDHwRZBB4NEgpXNic8VwQYAgUUEl8EXllZWQ=="))
 
         var metadataFile: File? = null
         var libsoFile: File? = null
@@ -43,7 +43,7 @@ object KittyDumperEngine {
                     val name = entry.name
                     
                     if (name.endsWith("global-metadata.dat")) {
-                        onLog("[AssetExtractor] Found global-metadata.dat inside: $name")
+                        onLog(com.kittyspace.ui.Obfuscator.o("LDYEBBIDMg8DBRYUAxgFKlcxGAIZE1cQGxgVFhtaGhIDFhMWAxZZExYDVx4ZBB4TEk1XUxkWGhI="))
                         val outDest = File(cacheDir, "global-metadata.dat")
                         zip.getInputStream(entry).use { input ->
                             FileOutputStream(outDest).use { output ->
@@ -51,9 +51,9 @@ object KittyDumperEngine {
                             }
                         }
                         metadataFile = outDest
-                        onLog("[AssetExtractor] Extracted global-metadata.dat (${outDest.length()} bytes)")
+                        onLog(com.kittyspace.ui.Obfuscator.o("LDYEBBIDMg8DBRYUAxgFKlcyDwMFFhQDEhNXEBsYFRYbWhoSAxYTFgMWWRMWA1dfUwwYAgMzEgQDWRsSGRADH19eClcVDgMSBF4="))
                     } else if (name.endsWith("libil2cpp.so")) {
-                        onLog("[BinaryExtractor] Found libil2cpp.so inside: $name")
+                        onLog(com.kittyspace.ui.Obfuscator.o("LDUeGRYFDjIPAwUWFAMYBSpXMRgCGRNXGx4VHhtFFAcHWQQYVx4ZBB4TEk1XUxkWGhI="))
                         // We prefer arm64-v8a ABI
                         if (libsoFile == null || name.contains("arm64-v8a")) {
                             val outDest = File(cacheDir, "libil2cpp.so")
@@ -63,13 +63,13 @@ object KittyDumperEngine {
                                 }
                             }
                             libsoFile = outDest
-                            onLog("[BinaryExtractor] Extracted libil2cpp.so to: ${outDest.absolutePath}")
+                            onLog(com.kittyspace.ui.Obfuscator.o("LDUeGRYFDjIPAwUWFAMYBSpXMg8DBRYUAxITVxseFR4bRRQHB1kEGFcDGE1XUwwYAgMzEgQDWRYVBBgbAgMSJxYDHwo="))
                         }
                     }
                 }
                 zip.close()
             } catch (e: Exception) {
-                onLog("[Error] Failed to read components from APK $apkPath: ${e.message}")
+                onLog(com.kittyspace.ui.Obfuscator.o("LDIFBRgFKlcxFh4bEhNXAxhXBRIWE1cUGBoHGBkSGQMEVxEFGBpXNic8V1MWBxwnFgMfTVdTDBJZGhIEBBYQEgo="))
             }
         }
         
@@ -82,7 +82,7 @@ object KittyDumperEngine {
 
     // Extracts libUE4.so / libue4.so from the source APKs
     fun extractUnrealFromApk(apkPaths: List<String>, cacheDir: File, onLog: (String) -> Unit): UnrealFiles {
-        onLog("[System] Analyzing ${apkPaths.size} APK source(s) for Unreal Engine...")
+        onLog(com.kittyspace.ui.Obfuscator.o("LCQOBAMSGipXNhkWGw4NHhkQV1MMFgccJxYDHwRZBB4NEgpXNic8VwQYAgUUEl8EXlcRGAVXIhkFEhYbVzIZEB4ZEllZWQ=="))
 
         var libsoFile: File? = null
 
@@ -98,7 +98,7 @@ object KittyDumperEngine {
                     val name = entry.name
                     
                     if (name.endsWith("libUE4.so") || name.endsWith("libue4.so") || name.endsWith("libunreal.so") || name.endsWith("libUnreal.so")) {
-                        onLog("[BinaryExtractor] Found Unreal binary: $name")
+                        onLog(com.kittyspace.ui.Obfuscator.o("LDUeGRYFDjIPAwUWFAMYBSpXMRgCGRNXIhkFEhYbVxUeGRYFDk1XUxkWGhI="))
                         if (libsoFile == null || name.contains("arm64-v8a")) {
                             val outDest = File(cacheDir, "libUE4.so")
                             zip.getInputStream(entry).use { input ->
@@ -107,13 +107,13 @@ object KittyDumperEngine {
                                 }
                             }
                             libsoFile = outDest
-                            onLog("[BinaryExtractor] Extracted Unreal library to: ${outDest.absolutePath}")
+                            onLog(com.kittyspace.ui.Obfuscator.o("LDUeGRYFDjIPAwUWFAMYBSpXMg8DBRYUAxITVyIZBRIWG1cbHhUFFgUOVwMYTVdTDBgCAzMSBANZFhUEGBsCAxInFgMfCg=="))
                         }
                     }
                 }
                 zip.close()
             } catch (e: Exception) {
-                onLog("[Error] Failed to read components from APK $apkPath: ${e.message}")
+                onLog(com.kittyspace.ui.Obfuscator.o("LDIFBRgFKlcxFh4bEhNXAxhXBRIWE1cUGBoHGBkSGQMEVxEFGBpXNic8V1MWBxwnFgMfTVdTDBJZGhIEBBYQEgo="))
             }
         }
         
@@ -146,14 +146,14 @@ object KittyDumperEngine {
         packageName: String,
         onLog: (String) -> Unit
     ): File {
-        onLog("[Dumper] Initiating IL2CPP dumper engine...")
-        onLog("[Dumper] Binary: ${libil2cppFile.name} (Valid: ${NativeDumper.verifyElfHeader(libil2cppFile.absolutePath)})")
-        onLog("[Dumper] Metadata: ${metadataFile.name} (Valid: ${NativeDumper.verifyGlobalMetadataHeader(metadataFile.absolutePath)})")
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXPhkeAx4WAx4ZEFc+O0U0JydXEwIaBxIFVxIZEB4ZEllZWQ=="))
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXNR4ZFgUOTVdTDBseFR4bRRQHBzEeGxJZGRYaEgpXXyEWGx4TTVdTDDkWAx4BEjMCGgcSBVkBEgUeEQ4yGxE/EhYTEgVfGx4VHhtFFAcHMR4bElkWFQQYGwIDEicWAx9eCl4="))
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXOhIDFhMWAxZNV1MMGhIDFhMWAxYxHhsSWRkWGhIKV18hFhseE01XUww5FgMeARIzAhoHEgVZARIFHhEOMBsYFRYbOhIDFhMWAxY/EhYTEgVfGhIDFhMWAxYxHhsSWRYVBBgbAgMSJxYDH14KXg=="))
         
-        onLog("[Dumper] Reading and scanning metadata string pools...")
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJRIWEx4ZEFcWGRNXBBQWGRkeGRBXGhIDFhMWAxZXBAMFHhkQVwcYGBsEWVlZ"))
         // NO LIMITS, EXTRACT EVERYTHING
         val strings = extractPrintableStrings(metadataFile)
-        onLog("[Dumper] Extracted ${strings.size} candidate symbols from global-metadata.dat")
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXMg8DBRYUAxITV1MMBAMFHhkQBFkEHg0SClcUFhkTHhMWAxJXBA4aFRgbBFcRBRgaVxAbGBUWG1oaEgMWExYDFlkTFgM="))
 
         val assemblies = strings.filter { it.endsWith(".dll", ignoreCase = true) }.distinct()
         val classesCandidate = strings.filter { 
@@ -161,8 +161,8 @@ object KittyDumperEngine {
             it.all { c -> c.isLetterOrDigit() || c == '_' || c == '.' } 
         }.distinct()
 
-        onLog("[Dumper] Analyzed assemblies: ${assemblies.take(5).joinToString(", ")}...")
-        onLog("[Dumper] Constructing type structures & disassembling classes...")
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXNhkWGw4NEhNXFgQEEhoVGx4SBE1XUwwWBAQSGhUbHhIEWQMWHBJfQl5ZHRgeGSMYJAMFHhkQXw=="))
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXNBgZBAMFAhQDHhkQVwMOBxJXBAMFAhQDAgUSBFdRVxMeBBYEBBIaFRseGRBXFBsWBAQSBFlZWQ=="))
 
         // RESOLVE SEQUENTIAL OUTPUT FILE DIRECTLY IN KITTYDUMPER/UNITY FOLDER
         val baseDir = outputDir
@@ -264,9 +264,9 @@ object KittyDumperEngine {
             }
         }
 
-        onLog("[Dumper] Synthesis complete! Complete Cs Dump written directly to requested space:")
-        onLog("[Dumper] Path: ${dumpFile.absolutePath}")
-        onLog("[Dumper] Result file size: ${dumpFile.length()} bytes")
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJA4ZAx8SBB4EVxQYGgcbEgMSVlc0GBoHGxIDElc0BFczAhoHVwAFHgMDEhlXEx4FEhQDGw5XAxhXBRIGAhIEAxITVwQHFhQSTQ=="))
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJxYDH01XUwwTAhoHMR4bElkWFQQYGwIDEicWAx8K"))
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJRIEAhsDVxEeGxJXBB4NEk1XUwwTAhoHMR4bElkbEhkQAx9fXgpXFQ4DEgQ="))
 
         // Generate companion PC disassembler scripts (config.json, ghidra.py, ida_py3.py)
         try {
@@ -286,7 +286,7 @@ object KittyDumperEngine {
                 }
                 """.trimIndent()
             )
-            onLog("[Companion] Generated config.json in output directory.")
+            onLog(com.kittyspace.ui.Obfuscator.o("LDQYGgcWGR4YGSpXMBIZEgUWAxITVxQYGREeEFkdBBgZVx4ZVxgCAwcCA1cTHgUSFAMYBQ5Z"))
 
             val ghidraFile = File(baseDir, "ghidra.py")
             ghidraFile.writeText(
@@ -315,7 +315,7 @@ object KittyDumperEngine {
                 print("[KittySpy Ghidra Loader] Symbol naming pass complete!")
                 """.trimIndent()
             )
-            onLog("[Companion] Generated ghidra.py Python script.")
+            onLog(com.kittyspace.ui.Obfuscator.o("LDQYGgcWGR4YGSpXMBIZEgUWAxITVxAfHhMFFlkHDlcnDgMfGBlXBBQFHgcDWQ=="))
 
             val idaFile = File(baseDir, "ida_py3.py")
             idaFile.writeText(
@@ -343,9 +343,9 @@ object KittyDumperEngine {
                 print("[KittySpy IDA Loader] Symbol binding completed successfully.")
                 """.trimIndent()
             )
-            onLog("[Companion] Generated ida_py3.py for IDA Pro method labelling.")
+            onLog(com.kittyspace.ui.Obfuscator.o("LDQYGgcWGR4YGSpXMBIZEgUWAxITVx4TFigHDkRZBw5XERgFVz4zNlcnBRhXGhIDHxgTVxsWFRIbGx4ZEFk="))
         } catch (e: Exception) {
-            onLog("[Warning] Companion scripts creation skipped: ${e.message}")
+            onLog(com.kittyspace.ui.Obfuscator.o("LCAWBRkeGRAqVzQYGgcWGR4YGVcEFAUeBwMEVxQFEhYDHhgZVwQcHgcHEhNNV1MMElkaEgQEFhASCg=="))
         }
 
         return dumpFile
@@ -358,13 +358,13 @@ object KittyDumperEngine {
         packageName: String,
         onLog: (String) -> Unit
     ): File {
-        onLog("[Dumper] Initiating Unreal engine dumper loader...")
-        onLog("[Dumper] Scanning ELF symbols and dynamic strings directly from SO...")
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXPhkeAx4WAx4ZEFciGQUSFhtXEhkQHhkSVxMCGgcSBVcbGBYTEgVZWVk="))
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJBQWGRkeGRBXMjsxVwQOGhUYGwRXFhkTVxMOGRYaHhRXBAMFHhkQBFcTHgUSFAMbDlcRBRgaVyQ4WVlZ"))
         
         // Scan the SO file for candidate Unreal class patterns (fast selective scan)
         val candidateStrings = extractPrintableStrings(libue4File)
         
-        onLog("[Dumper] Found ${candidateStrings.size} structures matching native headers")
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXMRgCGRNXUwwUFhkTHhMWAxIkAwUeGRAEWQQeDRIKVwQDBQIUAwIFEgRXGhYDFB8eGRBXGRYDHgESVx8SFhMSBQQ="))
         
         val unrealClasses = candidateStrings.filter { 
             (it.startsWith("U") || it.startsWith("A") || it.startsWith("F") || it.startsWith("/Script/"))
@@ -424,9 +424,9 @@ object KittyDumperEngine {
             }
         }
 
-        onLog("[Dumper] Rabin2 symbol translation completed!")
-        onLog("[Dumper] Dump output written to: ${dumpFile.absolutePath}")
-        onLog("[Dumper] Size of libue4.txt: ${dumpFile.length()} bytes")
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJRYVHhlFVwQOGhUYG1cDBRYZBBsWAx4YGVcUGBoHGxIDEhNW"))
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXMwIaB1cYAgMHAgNXAAUeAwMSGVcDGE1XUwwTAhoHMR4bElkWFQQYGwIDEicWAx8K"))
+        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJB4NElcYEVcbHhUCEkNZAw8DTVdTDBMCGgcxHhsSWRsSGRADH19eClcVDgMSBA=="))
 
         // Generate radare2 script companion directly in the output directory
         try {
@@ -448,9 +448,9 @@ object KittyDumperEngine {
                     cmdWriter.write("f fcn_$cleanName @ 0x${(10000000..99999999).random().toString(16).lowercase()}\n")
                 }
             }
-            onLog("[Companion] Generated sequential r2_commands.cmd script.")
+            onLog(com.kittyspace.ui.Obfuscator.o("LDQYGgcWGR4YGSpXMBIZEgUWAxITVwQSBgISGQMeFhtXBUUoFBgaGhYZEwRZFBoTVwQUBR4HA1k="))
         } catch (e: Exception) {
-            onLog("[Warning] Companion Radare2 script creation skipped: ${e.message}")
+            onLog(com.kittyspace.ui.Obfuscator.o("LCAWBRkeGRAqVzQYGgcWGR4YGVclFhMWBRJFVwQUBR4HA1cUBRIWAx4YGVcEHB4HBxITTVdTDBJZGhIEBBYQEgo="))
         }
 
         return dumpFile

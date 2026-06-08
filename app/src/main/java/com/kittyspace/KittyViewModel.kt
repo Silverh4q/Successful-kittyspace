@@ -24,9 +24,27 @@ import java.io.InputStream
 
 class KittyViewModel(application: Application) : AndroidViewModel(application) {
 
-    // In-memory cache list
-    private val _kittySpaceApps = MutableStateFlow<List<KittyAppEntity>>(emptyList())
+    private val prefs = application.getSharedPreferences("kittyspace_prefs", android.content.Context.MODE_PRIVATE)
+
+    // Persistent list
+    private val _kittySpaceApps = MutableStateFlow<List<KittyAppEntity>>(loadSavedApps())
     val kittySpaceApps: StateFlow<List<KittyAppEntity>> = _kittySpaceApps.asStateFlow()
+
+    private fun loadSavedApps(): List<KittyAppEntity> {
+        val saved = prefs.getString("saved_apps", "") ?: ""
+        if (saved.isEmpty()) return emptyList()
+        return saved.split("|||").mapNotNull {
+            val parts = it.split(":::")
+            if (parts.size >= 2) {
+                KittyAppEntity(parts[0], parts[1], if (parts.size >= 3) parts[2] else "")
+            } else null
+        }
+    }
+
+    private fun saveApps(list: List<KittyAppEntity>) {
+        val str = list.joinToString("|||") { "${it.packageName}:::${it.appName}:::${it.sourceDir}" }
+        prefs.edit().putString("saved_apps", str).apply()
+    }
 
     private val _installedApps = MutableStateFlow<List<InstalledAppInfo>>(emptyList())
     val installedApps: StateFlow<List<InstalledAppInfo>> = _installedApps.asStateFlow()
@@ -86,6 +104,7 @@ class KittyViewModel(application: Application) : AndroidViewModel(application) {
             if (currentList.none { it.packageName == app.packageName }) {
                 currentList.add(KittyAppEntity(app.packageName, app.appName, app.sourceDir))
                 _kittySpaceApps.value = currentList
+                saveApps(currentList)
             }
             KittyDumpManager.addLog("[KittySpace] Added application: ${app.appName} (${app.packageName})")
         }
@@ -94,6 +113,7 @@ class KittyViewModel(application: Application) : AndroidViewModel(application) {
     fun removeAppFromKittySpace(packageName: String) {
         viewModelScope.launch {
             _kittySpaceApps.value = _kittySpaceApps.value.filter { it.packageName != packageName }
+            saveApps(_kittySpaceApps.value)
             KittyDumpManager.addLog("[KittySpace] Removed package entry: $packageName")
         }
     }
