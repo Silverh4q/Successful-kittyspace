@@ -52,11 +52,16 @@ object AdvancedTabHelper {
     private val scope = CoroutineScope(Dispatchers.Main)
 
     fun createKittySpyTab(context: Context, service: KittySpyMenuService, targetPackageName: String, focusListener: (Boolean) -> Unit): View {
+        val scrollViewRoot = ScrollView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            isFillViewport = true
+        }
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.parseColor("#050A05"))
             setPadding(8.dp(context), 8.dp(context), 8.dp(context), 8.dp(context))
         }
+        scrollViewRoot.addView(root)
 
         // --- Header ---
         val headerText = TextView(context).apply {
@@ -103,7 +108,10 @@ object AdvancedTabHelper {
         root.addView(containerFrame)
         
         // Let's create the sub-layouts: 1. Load Classes View, 2. Inspector View
-        val classesView = createClassesViewport(context, targetPackageName, focusListener)
+        var loadClassesFunc: (() -> Unit)? = null
+        val classesView = createClassesViewport(context, targetPackageName, focusListener) { startDump ->
+            loadClassesFunc = startDump
+        }
         val inspectView = createInspectViewport(context, targetPackageName, focusListener)
         
         containerFrame.addView(classesView)
@@ -113,9 +121,14 @@ object AdvancedTabHelper {
         classesView.visibility = View.VISIBLE
         inspectView.visibility = View.GONE
 
+        var dataLoaded = false
         btnLoadClasses.setOnClickListener {
             classesView.visibility = View.VISIBLE
             inspectView.visibility = View.GONE
+            if (!dataLoaded) {
+                dataLoaded = true
+                loadClassesFunc?.invoke()
+            }
         }
         
         btnInspect.setOnClickListener {
@@ -123,10 +136,10 @@ object AdvancedTabHelper {
             inspectView.visibility = View.VISIBLE
         }
 
-        return root
+        return scrollViewRoot
     }
 
-    private fun createClassesViewport(context: Context, pkg: String, focusListener: (Boolean) -> Unit): View {
+    private fun createClassesViewport(context: Context, pkg: String, focusListener: (Boolean) -> Unit, registerDumpFunc: (() -> Unit) -> Unit): View {
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
         }
@@ -219,10 +232,8 @@ object AdvancedTabHelper {
         }
         root.addView(btnStartDump)
 
-        val listScroll = ScrollView(context).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f) }
         val listContainer = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        listScroll.addView(listContainer)
-        root.addView(listScroll)
+        root.addView(listContainer)
         
         val btnClear = Button(context).apply {
             text = "CLEAR RESULTS"
@@ -455,6 +466,11 @@ object AdvancedTabHelper {
             btnStartDump.visibility = View.GONE
             loadEntireGameData()
         }
+        
+        registerDumpFunc {
+            btnStartDump.visibility = View.GONE
+            loadEntireGameData()
+        }
 
         return root
     }
@@ -570,7 +586,20 @@ object AdvancedTabHelper {
         }.start()
         
         btnResolve.setOnClickListener {
-            val rvaQ = rvaInput.text.toString().trim().lowercase().removePrefix("0x")
+            val rvaInputStr = rvaInput.text.toString().trim()
+            if (rvaInputStr.isEmpty()) {
+                tvResultText.text = "Error: Input RVA cannot be empty."
+                resultContainer.visibility = View.VISIBLE
+                return@setOnClickListener
+            }
+            val rvaQ = rvaInputStr.lowercase().removePrefix("0x")
+            
+            if (rvaQ.toLongOrNull(16) == null) {
+                tvResultText.text = "Error: Invalid RVA format. Must be hex."
+                resultContainer.visibility = View.VISIBLE
+                return@setOnClickListener
+            }
+
             var foundC: LoadedClass? = null
             var foundM: LoadedMethod? = null
             

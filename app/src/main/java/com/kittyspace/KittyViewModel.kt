@@ -8,9 +8,7 @@ import android.os.Build
 import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.kittyspace.data.database.KittyAppEntity
-import com.kittyspace.data.database.KittyDatabase
-import com.kittyspace.data.repository.KittyRepository
+import com.kittyspace.KittyAppEntity
 import com.kittyspace.dumper.KittyDumperEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,16 +24,9 @@ import java.io.InputStream
 
 class KittyViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val database = KittyDatabase.getDatabase(application)
-    private val repository = KittyRepository(database.kittyAppDao())
-
-    // App lists
-    val kittySpaceApps: StateFlow<List<KittyAppEntity>> = repository.allKittyApps
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    // In-memory cache list
+    private val _kittySpaceApps = MutableStateFlow<List<KittyAppEntity>>(emptyList())
+    val kittySpaceApps: StateFlow<List<KittyAppEntity>> = _kittySpaceApps.asStateFlow()
 
     private val _installedApps = MutableStateFlow<List<InstalledAppInfo>>(emptyList())
     val installedApps: StateFlow<List<InstalledAppInfo>> = _installedApps.asStateFlow()
@@ -91,14 +82,18 @@ class KittyViewModel(application: Application) : AndroidViewModel(application) {
 
     fun addAppToKittySpace(app: InstalledAppInfo) {
         viewModelScope.launch {
-            repository.addAppToKittySpace(app.packageName, app.appName, app.sourceDir)
+            val currentList = _kittySpaceApps.value.toMutableList()
+            if (currentList.none { it.packageName == app.packageName }) {
+                currentList.add(KittyAppEntity(app.packageName, app.appName, app.sourceDir))
+                _kittySpaceApps.value = currentList
+            }
             KittyDumpManager.addLog("[KittySpace] Added application: ${app.appName} (${app.packageName})")
         }
     }
 
     fun removeAppFromKittySpace(packageName: String) {
         viewModelScope.launch {
-            repository.removeAppFromKittySpace(packageName)
+            _kittySpaceApps.value = _kittySpaceApps.value.filter { it.packageName != packageName }
             KittyDumpManager.addLog("[KittySpace] Removed package entry: $packageName")
         }
     }

@@ -154,9 +154,20 @@ class KittySpyMenuService : Service() {
 
     private fun waitForGameToLoad() {
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-            // Simplified non-root auto-detection: Wait for a standard short delay after launch.
-            // On non-rooted devices, without UsageStats or Accessibility, we simulate detection.
-            kotlinx.coroutines.delay(5000)
+            // Auto game detection: Wait for main game libraries to load into memory
+            for (i in 0..60) {
+                try {
+                    val maps = java.io.File("/proc/self/maps").readText()
+                    if (maps.contains("libil2cpp.so") || maps.contains("libunity.so") || maps.contains("libUE4.so")) {
+                        break
+                    }
+                } catch (e: Exception) {
+                    // Ignore and wait
+                }
+                kotlinx.coroutines.delay(1000)
+            }
+            // Add a small delay after library is found to ensure classes are mapped
+            kotlinx.coroutines.delay(1000)
             
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 isGameReady = true

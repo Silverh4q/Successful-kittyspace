@@ -64,7 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.kittyspace.data.database.KittyAppEntity
+import com.kittyspace.KittyAppEntity
 import com.kittyspace.ui.theme.MyApplicationTheme
 import java.io.File
 import kotlinx.coroutines.delay
