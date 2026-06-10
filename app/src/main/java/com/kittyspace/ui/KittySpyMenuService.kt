@@ -38,7 +38,7 @@ class KittySpyMenuService : Service() {
     companion object {
         @JvmStatic
         fun start(context: Context) {
-            android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "Service start() called from ${context.packageName}")
+            android.util.Log.d("KittySpyMenu", "Service start() called from ${context.packageName}")
             val intent = Intent(context, KittySpyMenuService::class.java)
             intent.putExtra("packageName", context.packageName)
             context.startService(intent)
@@ -52,17 +52,12 @@ class KittySpyMenuService : Service() {
     private lateinit var expandedView: LinearLayout
     private var targetPackageName = "com.unknown"
 
-    // Military Grade String Obfuscation
-    private fun o(s: String): String {
-        return String(android.util.Base64.decode(s, android.util.Base64.DEFAULT).map { (it.toInt() xor 0x77).toByte() }.toByteArray())
-    }
-
-    private val DarkBg = Color.parseColor(o("VEczRzNHMw==")) // "#0D0D0D"
-    private val PrimaryAccent = Color.parseColor(o("VEdHMTFDRg==")) // "#00FF41"
-    private val SurfaceDark = Color.parseColor(o("VEZCRkJGQg==")) // "#151515"
-    private val HeaderBg = Color.parseColor(o("VEdHRjFHTw==")) // "#001F08"
-    private val VipColor = Color.parseColor(o("VDExNURHRw==")) // "#FFB300"
-    private val SaveColor = Color.parseColor(o("VEdHNTExMQ==")) // "#00BFFF"
+    private val DarkBg = Color.parseColor("#0D0D0D")
+    private val PrimaryAccent = Color.parseColor("#00FF41")
+    private val SurfaceDark = Color.parseColor("#151515")
+    private val HeaderBg = Color.parseColor("#001F08")
+    private val VipColor = Color.parseColor("#FFB300")
+    private val SaveColor = Color.parseColor("#00BFFF")
     private val ErrorColor = Color.RED
 
     private var isGameReady = false
@@ -83,12 +78,12 @@ class KittySpyMenuService : Service() {
     private var isUiInitialized = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "onStartCommand entered")
+        android.util.Log.d("KittySpyMenu", "onStartCommand entered")
         targetPackageName = intent?.getStringExtra("packageName") ?: this.packageName
-        android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "packageName received: $targetPackageName")
+        android.util.Log.d("KittySpyMenu", "packageName received: $targetPackageName")
         
         if (!isUiInitialized) {
-            android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "initializeUI started")
+            android.util.Log.d("KittySpyMenu", "initializeUI started")
             initializeUI()
         }
         waitForGameToLoad() // auto detect game
@@ -97,11 +92,11 @@ class KittySpyMenuService : Service() {
     
     private fun initializeUI() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
-            val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse(o("BxYUHBYQEk0=") + packageName)).apply {
+            val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + packageName)).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             startActivity(intent)
-            Toast.makeText(this, o("JxsSFgQSVxAFFhkDVzMeBAcbFg5XGAESBVcYAx8SBVcWBwcEVwcSBRoeBAQeGBlXERgFVwMfElc6GBNXOhIZAlcDGFcAGAUc"), Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Please grant Overlay Permission to use the floating mod menu, then restart the application.", Toast.LENGTH_LONG).show()
             stopSelf()
             return
         }
@@ -135,21 +130,21 @@ class KittySpyMenuService : Service() {
         rootView.addView(collapsedView)
         try {
             if (rootView.parent == null) {
-                android.util.Log.d(o("PB4DAw4kBw4="), "addView called")
+                android.util.Log.d("KittySpyMenu", "addView called")
                 windowManager.addView(rootView, layoutParams)
-                android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "addView success")
+                android.util.Log.d("KittySpyMenu", "addView success")
             }
         } catch (e: Exception) {
-            android.util.Log.e(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "addView exception", e)
-            Toast.makeText(this, com.kittyspace.ui.Obfuscator.o("MRYeGxITVwMYVxMeBAcbFg5XGhIZAlcYARIFGxYOTVdTDBJZGhIEBBYQEgo="), Toast.LENGTH_LONG).show()
+            android.util.Log.e("KittySpyMenu", "addView exception", e)
+            Toast.makeText(this, "Could not add overlay view to the window manager. Check permissions.", Toast.LENGTH_LONG).show()
         }
         isUiInitialized = true
-        android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "initializeUI completed")
+        android.util.Log.d("KittySpyMenu", "initializeUI completed")
     }
 
     override fun onCreate() {
         super.onCreate()
-        android.util.Log.d(com.kittyspace.ui.Obfuscator.o("PB4DAw4kBw4="), "Service created")
+        android.util.Log.d("KittySpy", "Service created")
     }
 
     private fun waitForGameToLoad() {
@@ -158,7 +153,7 @@ class KittySpyMenuService : Service() {
             for (i in 0..60) {
                 try {
                     val maps = java.io.File("/proc/self/maps").readText()
-                    if (maps.contains(com.kittyspace.ui.Obfuscator.o("Gx4VHhtFFAcHWQQY")) || maps.contains("libunity.so") || maps.contains("libUE4.so")) {
+                    if (maps.contains("libil2cpp.so") || maps.contains("libunity.so") || maps.contains("libUE4.so")) {
                         break
                     }
                 } catch (e: Exception) {
@@ -171,7 +166,7 @@ class KittySpyMenuService : Service() {
             
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 isGameReady = true
-                Toast.makeText(this@KittySpyMenuService, com.kittyspace.ui.Obfuscator.o("MBYaElclEhYTDllXPB4DAw4kBw5XNhQDHgES"), Toast.LENGTH_LONG).show()
+                Toast.makeText(this@KittySpyMenuService, "Memory Scanner Ready: Target application structures loaded.", Toast.LENGTH_LONG).show()
                 try {
                     if (rootView.parent == null) {
                         windowManager.addView(rootView, layoutParams)
@@ -179,7 +174,7 @@ class KittySpyMenuService : Service() {
                         windowManager.updateViewLayout(rootView, layoutParams)
                     }
                 } catch (e: Exception) {
-                    Toast.makeText(this@KittySpyMenuService, com.kittyspace.ui.Obfuscator.o("MgUFGAVXHhkeAx4WGx4NHhkQVzoYE1c6EhkCVxsWDhgCA01XUwwSWRoSBAQWEBIK"), Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@KittySpyMenuService, "Could not initialize floating overlay. Check permissions.", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -223,7 +218,7 @@ class KittySpyMenuService : Service() {
             background = createBg(Color.BLACK, 2, PrimaryAccent, 4f)
             
             val text = TextView(this@KittySpyMenuService).apply {
-                this.text = com.kittyspace.ui.Obfuscator.o("PCQ=")
+                this.text = "=^."
                 setTextColor(PrimaryAccent)
                 typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
                 textSize = 20f
@@ -259,7 +254,7 @@ class KittySpyMenuService : Service() {
             setOnTouchListener(dragTouchListener)
             
             val title = TextView(this@KittySpyMenuService).apply {
-                this.text = o("JC4kWSMyJTo+OTY7V1hYVw==") + targetPackageName
+                this.text = "KittySpy -> " + targetPackageName
                 setTextColor(PrimaryAccent)
                 textSize = 11f
                 typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
@@ -267,7 +262,7 @@ class KittySpyMenuService : Service() {
             }
             
             val btnMin = TextView(this@KittySpyMenuService).apply {
-                this.text = com.kittyspace.ui.Obfuscator.o("leHL")
+                this.text = "-"
                 setTextColor(PrimaryAccent)
                 textSize = 14f
                 typeface = Typeface.DEFAULT_BOLD
@@ -279,7 +274,7 @@ class KittySpyMenuService : Service() {
             }
             
             val btnClose = TextView(this@KittySpyMenuService).apply {
-                this.text = com.kittyspace.ui.Obfuscator.o("levh")
+                this.text = "X"
                 setTextColor(Color.parseColor("#FF3333"))
                 textSize = 14f
                 typeface = Typeface.DEFAULT_BOLD
@@ -307,7 +302,7 @@ class KittySpyMenuService : Service() {
             gravity = Gravity.CENTER
             
             val title = TextView(context).apply {
-                this.text = com.kittyspace.ui.Obfuscator.o("IT4nVzY0NDIkJFclMiYiPiUyMw==")
+                this.text = "VIP ACCESS REQUIRED"
                 setTextColor(VipColor)
                 typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
                 textSize = 16f
@@ -315,7 +310,7 @@ class KittySpyMenuService : Service() {
             }
             
             val subtitle = TextView(context).apply {
-                this.text = com.kittyspace.ui.Obfuscator.o("PjknIiNXIT4nVzwyLlcjOFckIzYlI1clIjkjPjoyVzY5NjsuJD4k")
+                this.text = "Enter your L0RD SILVER VIP Pass to use KittySpy"
                 setTextColor(Color.GRAY)
                 textSize = 12f
                 gravity = Gravity.CENTER
@@ -333,7 +328,7 @@ class KittySpyMenuService : Service() {
             }
             
             val errorText = TextView(context).apply {
-                this.text = com.kittyspace.ui.Obfuscator.o("PhkBFhseE1c8Eg5Z")
+                this.text = "Invalid VIP Key"
                 setTextColor(ErrorColor)
                 textSize = 10f
                 visibility = View.GONE
@@ -341,7 +336,7 @@ class KittySpyMenuService : Service() {
             }
             
             val btnVerify = Button(context).apply {
-                this.text = com.kittyspace.ui.Obfuscator.o("ITIlPjEuVyE+Jw==")
+                this.text = "VERIFY"
                 setTextColor(VipColor)
                 typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
                 textSize = 12f
@@ -420,7 +415,7 @@ class KittySpyMenuService : Service() {
                     
                     setOnClickListener {
                         if (!isGameReady && title != "SOCIAL") {
-                            Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("IBYeAx4ZEFcRGAVXEBYaEllZWQ=="), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Game structure mapping not loaded yet", Toast.LENGTH_SHORT).show()
                             return@setOnClickListener
                         }
                         currentSelectedTab?.let {
@@ -441,7 +436,7 @@ class KittySpyMenuService : Service() {
             
             val t1 = createTab("KITTYSPY", tab1)
             val t2 = createTab("PATCHER", tab2)
-            val t3 = createTab(com.kittyspace.ui.Obfuscator.o("Pzg4PA=="), tab3)
+            val t3 = createTab("HOOKS", tab3)
             val t4 = createTab("SOCIAL", tab4)
             
             tabsRow.addView(t1)
@@ -545,7 +540,7 @@ class KittySpyMenuService : Service() {
                 it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
                 if (isInspecting) return@setOnClickListener
                 isInspecting = true
-                logTerminal.text = com.kittyspace.ui.Obfuscator.o("LCQuJCpXPhkeAx4WGx4NHhkQVxMCGgdXBBIGAhIZFBJXFhAWHhkEA1cDFgUQEgNNV1MDFgUQEgMnFhQcFhASORYaEllZWSsZ")
+                logTerminal.text = "[*] KittySpy Memory Engine Initializing...\n[+] Mapping ELF execution headers...\n[+] Game target located..."
                 
                 Handler(Looper.getMainLooper()).postDelayed({
                     Thread {
@@ -576,7 +571,7 @@ class KittySpyMenuService : Service() {
                                     Thread.sleep(1500)
                                     val events = arrayOf("Object Instantiated", "Event Triggered", "Garbage Collection", "Memory Allocation")
                                     val randomEvent = events[(Math.random() * events.size).toInt()]
-                                    val finalLine = com.kittyspace.ui.Obfuscator.o("Rw8=") + System.identityHashCode(this).toString(16) + " :: " + randomEvent
+                                    val finalLine = "0x" + System.identityHashCode(this).toString(16) + " :: " + randomEvent
                                     Handler(Looper.getMainLooper()).post {
                                         if (isInspecting) {
                                             logTerminal.append("\n[Live] $finalLine")
@@ -612,9 +607,9 @@ class KittySpyMenuService : Service() {
                         val fileName = "kittyspy_$targetPackageName.py"
                         val file = java.io.File(context.getExternalFilesDir(null), fileName)
                         file.writeText(content)
-                        Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("JBYBEhNXER4bElcDGFcWGRMFGB4TWBMWAxZYUwMWBRASAycWFBwWEBI5FhoSWBEeGxIEWFMRHhsSORYaEg=="), Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "Saved temporary extraction file to internal storage.", Toast.LENGTH_LONG).show()
                     } catch (e2: Exception) {
-                        Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("JBYBElcRFh4bEhNWVzkYVwcSBRoeBAQeGBkEWQ=="), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Could not save log data.", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -650,7 +645,7 @@ class KittySpyMenuService : Service() {
             setPadding(0, 8.dp(), 0, 0)
             
             val libInput = createInput("LIBRARY (e.g. libil2cpp.so)").apply {
-                setText(com.kittyspace.ui.Obfuscator.o("Gx4VHhtFFAcHWQQY"))
+                setText("libil2cpp.so")
             }
             val offsetInput = createInput("Offset / RVA (e.g. 0x123A4)")
             val hexInput = createInput("Hex Bytes (e.g. 1F 20 03 D5)")
@@ -662,7 +657,7 @@ class KittySpyMenuService : Service() {
                 
                 val cb = CheckBox(context)
                 val tv = TextView(context).apply {
-                    this.text = com.kittyspace.ui.Obfuscator.o("MhkWFRsSVzUeAwAeBBJXLzglVyQCBwcYBQM=")
+                    this.text = "Override mapping headers when patching"
                     setTextColor(Color.GRAY)
                     textSize = 11f
                     typeface = Typeface.MONOSPACE
@@ -672,7 +667,7 @@ class KittySpyMenuService : Service() {
             }
             
             val btnSelect = Button(context).apply {
-                this.text = com.kittyspace.ui.Obfuscator.o("JDI7MjQjVz8yL1cnNiM0Pw==")
+                this.text = "BROWSE PRE-MADE OPCODES"
                 setTextColor(SaveColor)
                 textSize = 11f
                 typeface = Typeface.MONOSPACE
@@ -710,7 +705,7 @@ class KittySpyMenuService : Service() {
                 orientation = LinearLayout.HORIZONTAL
                 
                 val btnPatch = Button(context).apply {
-                    this.text = com.kittyspace.ui.Obfuscator.o("JzYjND8=")
+                    this.text = "PATCH"
                     setTextColor(PrimaryAccent)
                     textSize = 11f
                     typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
@@ -721,23 +716,23 @@ class KittySpyMenuService : Service() {
                         val lib = libInput.text.toString().trim()
                         val off = offsetInput.text.toString().trim()
                         val hx = hexInput.text.toString().trim()
-                        if (lib.isBlank() || off.isBlank() || hx.isBlank()) Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("MgUFGAVNVzEeGxtXOx4VBRYFDltXOBERBBIDVxYZE1c/Eg8="), Toast.LENGTH_SHORT).show()
-                        else if (!off.startsWith(com.kittyspace.ui.Obfuscator.o("Rw8="), true)) Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("MgUFGAVNVz45ITY7PjNXODExJDIjWVc6AgQDVwQDFgUDVwAeAx9XRw8="), Toast.LENGTH_SHORT).show()
-                        else if (hx.length < 2) Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("MgUFGAVNVz45ITY7PjNXPzIv"), Toast.LENGTH_SHORT).show()
+                        if (lib.isBlank() || off.isBlank() || hx.isBlank()) Toast.makeText(context, "ERROR: Required fields are incomplete", Toast.LENGTH_SHORT).show()
+                        else if (!off.startsWith("0x", true)) Toast.makeText(context, "ERROR: Input offset strictly requires 0x Hexadecimals", Toast.LENGTH_SHORT).show()
+                        else if (hx.length < 2) Toast.makeText(context, "ERROR: Invalid hex bytes", Toast.LENGTH_SHORT).show()
                         else {
                             try {
                                 val address = java.lang.Long.decode(off)
                                 val res = com.kittyspace.NativeDumper.patchMemory(targetPackageName, lib, address, hx)
-                                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("JzYjND8yM01XUwUSBA=="), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "PATCH SUCCESS", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
-                                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("MgUFGAVXBxYDFB8eGRBXGBERBBIDTVdTDBJZGhIEBBYQEgo="), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "ERROR: Memory operation failed. See stacktrace.", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
                 }
                 
                 val btnRestore = Button(context).apply {
-                    this.text = com.kittyspace.ui.Obfuscator.o("JTIkIzglMg==")
+                    this.text = "RESTORE"
                     setTextColor(VipColor)
                     textSize = 11f
                     typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
@@ -747,14 +742,14 @@ class KittySpyMenuService : Service() {
                         it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
                         val lib = libInput.text.toString().trim()
                         val off = offsetInput.text.toString().trim()
-                        if (lib.isBlank() || off.isBlank()) Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("MgUFGAVNVzEeGxtXOx4VBRYFDlcWGRNXOBERBBIDVwMYVwUSBAMYBRI="), Toast.LENGTH_SHORT).show()
+                        if (lib.isBlank() || off.isBlank()) Toast.makeText(context, "ERROR: Target library and offset required.", Toast.LENGTH_SHORT).show()
                         else {
                             try {
                                 val address = java.lang.Long.decode(off)
                                 val res = com.kittyspace.NativeDumper.restoreMemory(targetPackageName, lib, address)
-                                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("JTIkIzglMk1XUwUSBA=="), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "RESTORED SUCCESS", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
-                                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("MgUFGAVXBRIEAxgFHhkQVxgREQQSA01XUwwSWRoSBAQWEBIK"), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "ERROR: Memory restore failed.", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -802,7 +797,7 @@ class KittySpyMenuService : Service() {
                 }
                 
                 val typeBtn = Button(context).apply {
-                    this.text = com.kittyspace.ui.Obfuscator.o("Pjkj")
+                    this.text = "TYPE"
                     setTextColor(Color.LTGRAY)
                     textSize = 10f
                     background = createBg(Color.TRANSPARENT, 1, Color.GRAY, 2f)
@@ -825,7 +820,7 @@ class KittySpyMenuService : Service() {
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 40.dp()).apply { bottomMargin = 12.dp() }
                 
                 val btnScan = Button(context).apply {
-                    this.text = com.kittyspace.ui.Obfuscator.o("JDQ2OVclIjkjPjoy")
+                    this.text = "SCAN MEMORY"
                     setTextColor(Color.LTGRAY)
                     textSize = 11f
                     typeface = Typeface.MONOSPACE
@@ -833,11 +828,11 @@ class KittySpyMenuService : Service() {
                     layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { rightMargin = 4.dp() }
                     setOnClickListener {
                         it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
-                        Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("JBQWGRkeGRBXBxgeGQMSBQRZWVk="), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Scanning process started...", Toast.LENGTH_SHORT).show()
                     }
                 }
                 val btnNext = Button(context).apply {
-                    this.text = com.kittyspace.ui.Obfuscator.o("OTIvI1ckMjYlND8=")
+                    this.text = "NEXT SCAN"
                     setTextColor(SaveColor)
                     textSize = 11f
                     typeface = Typeface.MONOSPACE
@@ -845,7 +840,7 @@ class KittySpyMenuService : Service() {
                     layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { leftMargin = 4.dp() }
                     setOnClickListener {
                         it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
-                        Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("ORIPA1ckEhYFFB9ZWVk="), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Refining results...", Toast.LENGTH_SHORT).show()
                     }
                 }
                 addView(btnScan)
@@ -853,7 +848,7 @@ class KittySpyMenuService : Service() {
             }
             
             val btnSelectHook = Button(context).apply {
-                this.text = com.kittyspace.ui.Obfuscator.o("JDI7MjQjVz84ODw+OTBXJzYjND8=")
+                this.text = "BROWSE HOOK TEMPLATES"
                 setTextColor(SaveColor)
                 textSize = 11f
                 typeface = Typeface.MONOSPACE
@@ -874,8 +869,8 @@ class KittySpyMenuService : Service() {
                 setOnClickListener {
                     it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
                     showOverlayDialog(hooks) { _ ->
-                        methodInput.setText(com.kittyspace.ui.Obfuscator.o("Rw8=") + (1000..9999).random().toString(16).uppercase())
-                        fieldInput?.setText(com.kittyspace.ui.Obfuscator.o("Rw8=") + (10..99).random().toString(16).uppercase())
+                        methodInput.setText("0x" + (1000..9999).random().toString(16).uppercase())
+                        fieldInput?.setText("0x" + (10..99).random().toString(16).uppercase())
                     }
                 }
             }
@@ -885,7 +880,7 @@ class KittySpyMenuService : Service() {
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 40.dp())
                 
                 val btnHook = Button(context).apply {
-                    this.text = com.kittyspace.ui.Obfuscator.o("Pzg4PA==")
+                    this.text = "HOOK"
                     setTextColor(PrimaryAccent)
                     textSize = 11f
                     typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
@@ -895,22 +890,22 @@ class KittySpyMenuService : Service() {
                         it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
                         val addressOff = methodInput.text.toString().trim()
                         val fieldName = fieldInput?.text?.toString()?.trim() ?: "unknown"
-                        if (addressOff.isBlank() || fieldName.isBlank()) Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("MgUFGAVNVzEeGxtXGhIDHxgTVxYZE1cRHhIbE1cYEREEEgM="), Toast.LENGTH_SHORT).show()
-                        else if (!addressOff.startsWith("0x", true)) Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("MgUFGAVNVz45ITY7PjNXODExJDIj"), Toast.LENGTH_SHORT).show()
+                        if (addressOff.isBlank() || fieldName.isBlank()) Toast.makeText(context, "ERROR: Target fields cannot be blank", Toast.LENGTH_SHORT).show()
+                        else if (!addressOff.startsWith("0x", true)) Toast.makeText(context, "ERROR: Invalid hex format requested", Toast.LENGTH_SHORT).show()
                         else {
                             try {
                                 val address = java.lang.Long.decode(addressOff)
                                 val res = com.kittyspace.NativeDumper.inlineHook(targetPackageName, fieldName, address)
-                                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("Pzg4PFc2Jyc7PjIzTVdTBRIE"), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "HOOK SUCCESS", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
-                                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("MgUFGAVXHxgYHB4ZEFcYEREEEgNNV1MMElkaEgQEFhASCg=="), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "ERROR: Inline Hook Initialization Failed", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
                 }
                 
                 val btnUnhook = Button(context).apply {
-                    this.text = com.kittyspace.ui.Obfuscator.o("Ijk/ODg8V186IjsjPl4=")
+                    this.text = "UNHOOK [DEL]"
                     setTextColor(VipColor)
                     textSize = 10f
                     typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
@@ -918,8 +913,8 @@ class KittySpyMenuService : Service() {
                     layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { leftMargin = 4.dp() }
                     setOnClickListener {
                         it.alpha = 0.5f; it.postDelayed({ it.alpha = 1f }, 100)
-                        if (methodInput.text.isBlank()) Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("MgUFGAVNVzkYAx8eGRBXAxhXAhkfGBgc"), Toast.LENGTH_SHORT).show()
-                        else Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("Ijk/ODg8MjNXOiI7Iz4nOzJXODExJDIjJA=="), Toast.LENGTH_SHORT).show()
+                        if (methodInput.text.isBlank()) Toast.makeText(context, "ERROR: No target specified", Toast.LENGTH_SHORT).show()
+                        else Toast.makeText(context, "UNHOOKED TARGET SUCCESSFULLY!", Toast.LENGTH_SHORT).show()
                     }
                 }
                 

@@ -259,8 +259,8 @@ object AdvancedTabHelper {
                     setPadding(4.dp(context), 8.dp(context), 4.dp(context), 2.dp(context))
                     setOnLongClickListener {
                         val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                        clip.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("NBsWBAQ="), cls.className))
-                        Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("NBgHHhITVzQbFgQETVdTDBQbBFkUGxYEBDkWGhIK"), Toast.LENGTH_SHORT).show()
+                        clip.setPrimaryClip(android.content.ClipData.newPlainText("Class", cls.className))
+                        Toast.makeText(context, "Copied class name to clipboard", Toast.LENGTH_SHORT).show()
                         true
                     }
                 }
@@ -290,8 +290,8 @@ object AdvancedTabHelper {
                         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                         setOnClickListener {
                             val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            clip.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("PgMSGg=="), if(item.isField) "0x${item.offset}" else "0x${item.rva}"))
-                            Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("NBgHHhIT"), Toast.LENGTH_SHORT).show()
+                            clip.setPrimaryClip(android.content.ClipData.newPlainText("RVA", if(item.isField) "0x${item.offset}" else "0x${item.rva}"))
+                            Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
                         }
                     }
 
@@ -302,8 +302,8 @@ object AdvancedTabHelper {
                         setOnClickListener {
                             val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                             val clipText = if(item.isField) "0x${item.offset}" else "0x${item.offset}" // Assuming offset holds address string or something similar if address not provided uniquely
-                            clip.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("PgMSGg=="), clipText))
-                            Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("NBgHHhITVzYTEwUSBAQ="), Toast.LENGTH_SHORT).show()
+                            clip.setPrimaryClip(android.content.ClipData.newPlainText("Copied Address", clipText))
+                            Toast.makeText(context, "Copied address successfully!", Toast.LENGTH_SHORT).show()
                         }
                     }
                     
@@ -322,11 +322,11 @@ object AdvancedTabHelper {
                     totalAdded++
                 }
             }
-            if(updateStatus) statusText.text = com.kittyspace.ui.Obfuscator.o("UwMYAxYbNhMTEhNXBRIEAhsDBFcRGAIZE1k=")
+            if(updateStatus) statusText.text = "Loaded UI structures completely."
         }
         
         fun loadEntireGameData() {
-            statusText.text = com.kittyspace.ui.Obfuscator.o("JBIWBRQfHhkQWVlZVwcWBQQeGRBXEBYaElcTFgMWWVlZ")
+            statusText.text = "Initializing structural memory parsers..."
             listContainer.removeAllViews()
             Thread {
                 var apkPath = "unknown"
@@ -365,7 +365,7 @@ object AdvancedTabHelper {
                 
                 Handler(Looper.getMainLooper()).post {
                     renderUi(runtimeList, false)
-                    statusText.text = com.kittyspace.ui.Obfuscator.o("OxgWExITVxYUAx4BElcUAgUFEhkDVxQbFgQEEgRXGBFXAx8SVxAWGhJXX1MMBQIZAx4aEjseBANZBB4NEgpXFBsWBAQSBF4=")
+                    statusText.text = "Parsing Complete. Dump loaded into Inspector Mode."
                 }
             }.start()
         }
@@ -378,7 +378,7 @@ object AdvancedTabHelper {
             val tClass = targetClassInput.text.toString().trim().lowercase()
             
             scope.launch {
-                statusText.text = com.kittyspace.ui.Obfuscator.o("JBIWBRQfHhkQWVlZ")
+                statusText.text = "Scanning..."
                 listContainer.removeAllViews()
                 
                 val results = mutableListOf<LoadedClass>()
@@ -420,7 +420,7 @@ object AdvancedTabHelper {
                 }
                 
                 if (results.isEmpty()) {
-                    statusText.text = com.kittyspace.ui.Obfuscator.o("ORgDVxEYAhkTWQ==")
+                    statusText.text = "Nothing matched query"
                 } else {
                     renderUi(results, true)
                 }
@@ -430,7 +430,7 @@ object AdvancedTabHelper {
         btnClear.setOnClickListener {
             // Revert back to full list
             renderUi(runtimeList, false)
-            statusText.text = com.kittyspace.ui.Obfuscator.o("OxgWExITVxYUAx4BElcUAgUFEhkDVxQbFgQEEgRXGBFXAx8SVxAWGhJXX1MMBQIZAx4aEjseBANZBB4NEgpXFBsWBAQSBF4=")
+            statusText.text = "Reverted search state. Showing all."
         }
         
         btnSave.setOnClickListener {
@@ -496,7 +496,7 @@ object AdvancedTabHelper {
             try {
                 context.startActivity(intent)
             } catch (e: Exception) {
-                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("NBYZGRgDVxgHEhlXBBYBElcTHhYbGBBZ"), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Could not launch save activity. Verify setup", Toast.LENGTH_SHORT).show()
             }
         }
         
@@ -626,14 +626,14 @@ object AdvancedTabHelper {
         btnResolve.setOnClickListener {
             val rvaInputStr = rvaInput.text.toString().trim()
             if (rvaInputStr.isEmpty()) {
-                tvResultText.text = com.kittyspace.ui.Obfuscator.o("MgUFGAVNVz4ZBwIDVyUhNlcUFhkZGANXFRJXEhoHAw5Z")
+                tvResultText.text = "ERROR: Empty search offset"
                 resultContainer.visibility = View.VISIBLE
                 return@setOnClickListener
             }
             val rvaQ = rvaInputStr.lowercase().removePrefix("0x")
             
             if (rvaQ.toLongOrNull(16) == null) {
-                tvResultText.text = com.kittyspace.ui.Obfuscator.o("MgUFGAVNVz4ZARYbHhNXJSE2VxEYBRoWA1lXOgIEA1cVElcfEg9Z")
+                tvResultText.text = "ERROR: Invalid Hex formatting"
                 resultContainer.visibility = View.VISIBLE
                 return@setOnClickListener
             }
@@ -659,10 +659,10 @@ object AdvancedTabHelper {
                 val engineStr = if (engineDetected == "UNITY") "Class:= ${foundC.className}\nMethod:\n${foundM.methodName}()\nRVA:\n0x${foundM.rva}" 
                                 else "Class:= ${foundC.className}\nFunction:=\n${foundM.methodName}()\nRVA:=\n0x${foundM.rva}"
                 
-                tvResultText.text = com.kittyspace.ui.Obfuscator.o("WlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlorGVMSGRAeGRIkAwUrGVpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpa")
+                tvResultText.text = "==============================\nTARGET RESOLVED SUCCESS\n==============================\n" + engineStr
                 resultContainer.visibility = View.VISIBLE
             } else {
-                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("JSE2VzkYA1cxGAIZEw=="), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Could not map RVA to class structure.", Toast.LENGTH_SHORT).show()
                 resultContainer.visibility = View.GONE
             }
         }
@@ -675,7 +675,7 @@ object AdvancedTabHelper {
                     var addr = 0L
                     try { addr = t.offset.toLong(16) } catch(e:Exception){}
                     NativeDumper.registerActiveInspector(addr, t.methodName) 
-                    Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("PhkEBxIUA1cEAxYFAxITVxEYBVdTDANZGhIDHxgTORYaEgo="), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Inspector registered in game heap successfully", Toast.LENGTH_SHORT).show()
                     updateWatchedListText()
                 }
             }
