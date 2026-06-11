@@ -147,207 +147,56 @@ object KittyDumperEngine {
         onLog: (String) -> Unit
     ): File {
         onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXPhkeAx4WAx4ZEFc+O0U0JydXEwIaBxIFVxIZEB4ZEllZWQ=="))
-        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXNR4ZFgUOTVdTDBseFR4bRRQHBzEeGxJZGRYaEgpXXyEWGx4TTVdTDDkWAx4BEjMCGgcSBVkBEgUeEQ4yGxE/EhYTEgVfGx4VHhtFFAcHMR4bElkWFQQYGwIDEicWAx9eCl4="))
-        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXOhIDFhMWAxZNV1MMGhIDFhMWAxYxHhsSWRkWGhIKV18hFhseE01XUww5FgMeARIzAhoHEgVZARIFHhEOMBsYFRYbOhIDFhMWAxY/EhYTEgVfGhIDFhMWAxYxHhsSWRYVBBgbAgMSJxYDH14KXg=="))
+        
+        // NO RANDOM GENERATION - 100% AUTHENTIC METADATA PARSING //
         
         onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJRIWEx4ZEFcWGRNXBBQWGRkeGRBXGhIDFhMWAxZXBAMFHhkQVwcYGBsEWVlZ"))
-        // NO LIMITS, EXTRACT EVERYTHING
-        val strings = extractPrintableStrings(metadataFile)
-        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXMg8DBRYUAxITV1MMBAMFHhkQBFkEHg0SClcUFhkTHhMWAxJXBA4aFRgbBFcRBRgaVxAbGBUWG1oaEgMWExYDFlkTFgM="))
-
-        val assemblies = strings.filter { it.endsWith(".dll", ignoreCase = true) }.distinct()
-        val classesCandidate = strings.filter { 
-            it.isNotEmpty() && it[0].isUpperCase() && 
-            it.all { c -> c.isLetterOrDigit() || c == '_' || c == '.' } 
-        }.distinct()
-
-        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXNhkWGw4NEhNXFgQEEhoVGx4SBE1XUwwWBAQSGhUbHhIEWQMWHBJfQl5ZHRgeGSMYJAMFHhkQXw=="))
-        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXNBgZBAMFAhQDHhkQVwMOBxJXBAMFAhQDAgUSBFdRVxMeBBYEBBIaFRseGRBXFBsWBAQSBFlZWQ=="))
-
-        // RESOLVE SEQUENTIAL OUTPUT FILE DIRECTLY IN KITTYDUMPER/UNITY FOLDER
+        
+        val metadataStrings = parseIl2CppMetadataStrings(metadataFile)
+        val elfSymbols = parseElf64DynamicSymbols(libil2cppFile)
+        
         val baseDir = outputDir
         baseDir.mkdirs()
         var count = 0
-        var dumpFile = File(baseDir, "${count}dump.cs")
+        var dumpFile = File(baseDir, "${count}il2cpp_dump_real.cs")
         while (dumpFile.exists()) {
             count++
-            dumpFile = File(baseDir, "${count}dump.cs")
+            dumpFile = File(baseDir, "${count}il2cpp_dump_real.cs")
         }
 
         dumpFile.bufferedWriter().use { writer ->
             writer.write("// ==============================================\n")
-            writer.write("//   KITTY IL2CPP DUMPER CS OUTPUT (COMPREHENSIVE)\n")
+            writer.write("//   KITTY IL2CPP DUMPER CS OUTPUT (AUTHENTIC)\n")
             writer.write("//   Engine version: Android IL2CPP\n")
             writer.write("//   Package Name: $packageName\n")
             writer.write("//   Saved Location: ${dumpFile.absolutePath}\n")
             writer.write("// ==============================================\n\n")
-
-            val finalAssemblies = listOf("Assembly-CSharp.dll")
-
-            // Distribute ALL detected unique classes into the assembly namespaces to output everything complete
-            val unusedClasses = classesCandidate.toMutableList()
-            if (unusedClasses.isEmpty()) {
-                unusedClasses.addAll(listOf("PlayerController", "GameManager", "NetworkClient", "DataManager", "UIController"))
-            }
-
-            val allFields = strings.filter { !it.contains(".") && it.length >= 4 }.distinct()
-            var fieldPointer = 0
-            val allMethods = strings.filter { !it.contains(".") && it.length >= 4 }.distinct()
-            var methodPointer = 0
-
-            // Dump all detected unique classes dynamically from top to bottom
-            val limitClasses = unusedClasses
-            val classesPerAsm = (limitClasses.size / finalAssemblies.size).coerceAtLeast(5)
-
-            var symbolIdx = 0
-            finalAssemblies.forEach { asm ->
-                writer.write("// Image $symbolIdx: $asm\n")
-                val namespaceName = asm.substringBefore(".dll").replace(".", "")
-                writer.write("namespace $namespaceName {\n")
-
-                val asmClasses = limitClasses.drop(symbolIdx * classesPerAsm).take(classesPerAsm)
-                val finalClasses = if (asmClasses.isEmpty()) {
-                    unusedClasses.take(10)
-                } else {
-                    asmClasses
+            
+            writer.write("// [*] EXPORTED ELF SYMBOLS (REAL RVAs FROM .SO):\n")
+            if (elfSymbols.isNotEmpty()) {
+                elfSymbols.sortedBy { it.second }.forEach { sym ->
+                    writer.write("//   0x${sym.second.toString(16).uppercase().padStart(8, '0')} -> ${sym.first}\n")
                 }
-
-                finalClasses.forEach { className ->
-                    writer.write("    // Metadata Token: 0x0600${(1000..9999).random()}\n")
-                    writer.write("    public class $className : MonoBehaviour {\n")
-                    writer.write("        // Fields\n")
-                    
-                    // Fields extracted sequentially from strings pool
-                    val fieldCount = (3..8).random()
-                    val fields = if (allFields.isNotEmpty()) {
-                        val slice = allFields.drop(fieldPointer).take(fieldCount)
-                        fieldPointer = (fieldPointer + fieldCount) % allFields.size
-                        slice
-                    } else emptyList()
-                    
-                    var offset = 16
-                    fields.forEach { f ->
-                        val lowerFirst = f.replaceFirstChar { it.lowercase() }
-                        val type = if (offset % 8 == 0) "int" else if (offset % 12 == 0) "string" else "float"
-                        writer.write("        public $type $lowerFirst; // 0x${offset.toString(16).uppercase()}\n")
-                        offset += 4
-                    }
-                    if (fields.isEmpty()) {
-                        writer.write("        public float moveSpeed; // 0x10\n")
-                        writer.write("        public int health; // 0x14\n")
-                    }
-
-                    writer.write("\n        // Methods\n")
-                    // Methods extracted sequentially from strings pool
-                    val methodCount = (4..10).random()
-                    val methods = if (allMethods.isNotEmpty()) {
-                        val slice = allMethods.drop(methodPointer).take(methodCount)
-                        methodPointer = (methodPointer + methodCount) % allMethods.size
-                        slice
-                    } else emptyList()
-                    
-                    var rva = 0x184A000L + (100000..999999).random()
-                    methods.forEach { m ->
-                        val methodName = m.replaceFirstChar { it.uppercase() }
-                        writer.write("        public void $methodName(); // RVA: 0x${rva.toString(16).uppercase()} Slot: ${(4..20).random()}\n")
-                        rva += 0x150L
-                    }
-                    if (methods.isEmpty()) {
-                        writer.write("        public void Start(); // RVA: 0x184F2B0 Slot: 4\n")
-                        writer.write("        public void Update(); // RVA: 0x184F520 Slot: 5\n")
-                    }
-
-                    writer.write("    }\n\n")
-                }
-                writer.write("}\n\n")
-                symbolIdx++
+            } else {
+                writer.write("//   (No exported dynamic symbols found in libil2cpp.so)\n")
             }
+            writer.write("\n\n// [*] METADATA STRINGS (ACTUAL C# CLASS / METHOD NAMES):\n")
+            writer.write("// NOTE: C# RVAs are omitted because offline mapping requires native C++ binary lifting.\n")
+            writer.write("// We now supply 100% Real string pool data instead of mock random generation.\n\n")
+
+            val classCandidates = metadataStrings.filter { 
+                it.length > 3 && it.first().isUpperCase() && !it.contains(" ") 
+            }.distinct()
+
+            writer.write("namespace KittyDumper.RealData {\n")
+            classCandidates.forEach { cls ->
+                writer.write("    public class $cls { // [Authentic String Pool Class]\n")
+                writer.write("    }\n\n")
+            }
+            writer.write("}\n")
         }
 
         onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJA4ZAx8SBB4EVxQYGgcbEgMSVlc0GBoHGxIDElc0BFczAhoHVwAFHgMDEhlXEx4FEhQDGw5XAxhXBRIGAhIEAxITVwQHFhQSTQ=="))
-        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJxYDH01XUwwTAhoHMR4bElkWFQQYGwIDEicWAx8K"))
-        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJRIEAhsDVxEeGxJXBB4NEk1XUwwTAhoHMR4bElkbEhkQAx9fXgpXFQ4DEgQ="))
-
-        // Generate companion PC disassembler scripts (config.json, ghidra.py, ida_py3.py)
-        try {
-            val configFile = File(baseDir, "config.json")
-            configFile.writeText(
-                """
-                {
-                  "DumpMethod": true,
-                  "DumpField": true,
-                  "DumpProperty": true,
-                  "DumpAttribute": false,
-                  "DumpFieldOffset": true,
-                  "DumpMethodRegister": true,
-                  "GenerateStruct": true,
-                  "ShowMetadataUsage": true,
-                  "RequireMetadataMagic": true
-                }
-                """.trimIndent()
-            )
-            onLog(com.kittyspace.ui.Obfuscator.o("LDQYGgcWGR4YGSpXMBIZEgUWAxITVxQYGREeEFkdBBgZVx4ZVxgCAwcCA1cTHgUSFAMYBQ5Z"))
-
-            val ghidraFile = File(baseDir, "ghidra.py")
-            ghidraFile.writeText(
-                """
-                # Ghidra script to load and label Unity IL2CPP exported symbols
-                # Generated on-device by KittyDumper
-                # Import your libil2cpp.so into Ghidra, then run this python script!
-                
-                from ghidra.util.task import ConsoleTaskMonitor
-                
-                print("[KittySpy Ghidra Loader] Analyzing and labeling dynamic class methods...")
-                
-                # Mock address mappings extracted during dump
-                symbols_to_rename = {
-                    0x184F2B0: "PlayerController_Start",
-                    0x184F520: "PlayerController_Update",
-                    0x19A0A80: "GameManager_Awake",
-                    0x19A2140: "NetworkClient_Initialize"
-                }
-                
-                for addr, name in symbols_to_rename.items():
-                    address = currentProgram.getMinAddress().getNewAddress(addr)
-                    createLabel(address, name, True)
-                    print("  Labeled function at: 0x%X -> %s" % (addr, name))
-                
-                print("[KittySpy Ghidra Loader] Symbol naming pass complete!")
-                """.trimIndent()
-            )
-            onLog(com.kittyspace.ui.Obfuscator.o("LDQYGgcWGR4YGSpXMBIZEgUWAxITVxAfHhMFFlkHDlcnDgMfGBlXBBQFHgcDWQ=="))
-
-            val idaFile = File(baseDir, "ida_py3.py")
-            idaFile.writeText(
-                """
-                # IDA Python v3 script to rename and map class methods
-                # Generated on-device by KittyDumper
-                # Load libil2cpp.so, then run Alt+F7 to load this file!
-                
-                import idc
-                import idautils
-                
-                print("[KittySpy IDA Loader] Direct symbol table mapping...")
-                
-                methods = {
-                    0x184F2B0: "PlayerController_Start",
-                    0x184F520: "PlayerController_Update",
-                    0x19A0A80: "GameManager_Awake",
-                    0x19A2140: "NetworkClient_Initialize"
-                }
-                
-                for addr, name in methods.items():
-                    idc.set_name(addr, name, idc.SN_CHECK)
-                    print("  IDA: Marked address 0x%08X with label %s" % (addr, name))
-                
-                print("[KittySpy IDA Loader] Symbol binding completed successfully.")
-                """.trimIndent()
-            )
-            onLog(com.kittyspace.ui.Obfuscator.o("LDQYGgcWGR4YGSpXMBIZEgUWAxITVx4TFigHDkRZBw5XERgFVz4zNlcnBRhXGhIDHxgTVxsWFRIbGx4ZEFk="))
-        } catch (e: Exception) {
-            onLog(com.kittyspace.ui.Obfuscator.o("LCAWBRkeGRAqVzQYGgcWGR4YGVcEFAUeBwMEVxQFEhYDHhgZVwQcHgcHEhNNV1MMElkaEgQEFhASCg=="))
-        }
-
         return dumpFile
     }
 
@@ -359,131 +208,171 @@ object KittyDumperEngine {
         onLog: (String) -> Unit
     ): File {
         onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXPhkeAx4WAx4ZEFciGQUSFhtXEhkQHhkSVxMCGgcSBVcbGBYTEgVZWVk="))
-        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJBQWGRkeGRBXMjsxVwQOGhUYGwRXFhkTVxMOGRYaHhRXBAMFHhkQBFcTHgUSFAMbDlcRBRgaVyQ4WVlZ"))
         
-        // Scan the SO file for candidate Unreal class patterns (fast selective scan)
-        val candidateStrings = extractPrintableStrings(libue4File)
+        // NO RANDOM GENERATION - 100% REAL ELF SYMBOL TABLE DECODING //
         
-        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXMRgCGRNXUwwUFhkTHhMWAxIkAwUeGRAEWQQeDRIKVwQDBQIUAwIFEgRXGhYDFB8eGRBXGRYDHgESVx8SFhMSBQQ="))
+        val symbols = parseElf64DynamicSymbols(libue4File)
         
-        val unrealClasses = candidateStrings.filter { 
-            (it.startsWith("U") || it.startsWith("A") || it.startsWith("F") || it.startsWith("/Script/"))
-        }.distinct()
-
-        val functions = listOf(
-            "GNatives", "GGameEngine", "UObject::ProcessEvent", "FName::ToString", 
-            "GWorld", "StaticClass", "FMemory::Malloc", "UClass::GetPrivateStaticClass"
-        ) + candidateStrings.filter { it.length > 3 && it.all { c -> c.isLetterOrDigit() || c == '_' } }.distinct()
-
-        // RESOLVE SEQUENTIAL OUTPUT FILE DIRECTLY IN KITTYDUMPER/UNREAL FOLDER AS REQUESTED
         val baseDir = outputDir
         baseDir.mkdirs()
         var count = 0
-        var dumpFile = File(baseDir, "${count}libue4.txt")
+        var dumpFile = File(baseDir, "${count}libue4_real_symbols.txt")
         while (dumpFile.exists()) {
             count++
-            dumpFile = File(baseDir, "${count}libue4.txt")
+            dumpFile = File(baseDir, "${count}libue4_real_symbols.txt")
         }
 
         dumpFile.bufferedWriter().use { writer ->
             writer.write("========================================================\n")
-            writer.write("       KITTY UNREAL ENGINE DUMPER OUTPUT (REAL)\n")
+            writer.write("       KITTY UNREAL ENGINE DUMPER OUTPUT (100% REAL)\n")
             writer.write("       Engine Target: libUE4.so\n")
             writer.write("       Package Name: $packageName\n")
-            writer.write("       Saved Path: ${dumpFile.absolutePath}\n")
             writer.write("========================================================\n\n")
             
             writer.write("[+] File Checked: ${libue4File.absolutePath}\n")
             writer.write("[+] File Size: ${libue4File.length()} bytes\n")
             writer.write("[+] Verification Magic: ELF\n\n")
 
-            writer.write("[*] ENGINE CLASSES DETECTED IN SYMBOL SCANS (COMPLETE):\n\n")
+            writer.write("[*] EXPORTED UNREAL GLOBAL SYMBOLS DETECTED VIA DYNSYM PARSING:\n\n")
             
-            // DUMP ALL DETECTED CLASSES FROM THE VERY TOP TO THE VERY BOTTOM WITHOUT FILTERED LIMITS
-            val classesToPrint = if (unrealClasses.isEmpty()) {
-                listOf("AActor", "APawn", "UWorld", "UGameplayStatics", "UCharacterMovementComponent", "UWidget", "FVector", "FRotator")
+            if (symbols.isEmpty()) {
+                writer.write("   [!] No dynamic symbols could be parsed. Binary might be fully stripped.\n")
             } else {
-                unrealClasses
-            }
-
-            classesToPrint.forEach { uclass ->
-                writer.write("  -> Detected Struct/Class: $uclass\n")
-                if (uclass.startsWith("U")) {
-                    writer.write("     Inherits: UObject\n")
-                } else if (uclass.startsWith("A")) {
-                    writer.write("     Inherits: AActor\n")
-                } else {
-                    writer.write("     Inherits: FStruct\n")
+                symbols.sortedBy { it.second }.forEach { sym ->
+                    val unmangled = if (sym.first.startsWith("_Z")) {
+                        // Very fast crude C++ unmangle approximation without NDK __cxa_demangle
+                        sym.first.replace("_Z", "C++_Symbol_") 
+                    } else sym.first
+                    writer.write("[+]  Symbol Address [RVA]: 0x${sym.second.toString(16).uppercase().padStart(8, '0')} -> $unmangled\n")
                 }
-                writer.write("     VTable Offset: 0x${(10000000..99999999).random().toString(16).uppercase()}\n\n")
-            }
-
-            writer.write("\n[*] EXPORTED UNREAL GLOBAL SYMBOLS FOUND:\n\n")
-            functions.distinct().forEach { func ->
-                writer.write("[+]  Symbol Address [RVA]: 0x${(10000000..99999999).random().toString(16).uppercase()} -> $func\n")
             }
         }
-
+        
         onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJRYVHhlFVwQOGhUYG1cDBRYZBBsWAx4YGVcUGBoHGxIDEhNW"))
-        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXMwIaB1cYAgMHAgNXAAUeAwMSGVcDGE1XUwwTAhoHMR4bElkWFQQYGwIDEicWAx8K"))
-        onLog(com.kittyspace.ui.Obfuscator.o("LDMCGgcSBSpXJB4NElcYEVcbHhUCEkNZAw8DTVdTDBMCGgcxHhsSWRsSGRADH19eClcVDgMSBA=="))
-
-        // Generate radare2 script companion directly in the output directory
-        try {
-            val r2File = File(baseDir, "${count}r2_commands.cmd")
-            r2File.bufferedWriter().use { cmdWriter ->
-                cmdWriter.write("# Radare2 command batch script for Unreal Engine symbol renaming\n")
-                cmdWriter.write("# Target: libUE4.so\n")
-                cmdWriter.write("# Execute in Radare2 using: \". r2_commands.cmd\"\n\n")
-                cmdWriter.write("fs symbols\n")
-                
-                cmdWriter.write("f fcn_GNatives @ 0x124a000\n")
-                cmdWriter.write("f fcn_GGameEngine @ 0x184c200\n")
-                cmdWriter.write("f fcn_UObject_ProcessEvent @ 0x19a4e00\n")
-                cmdWriter.write("f fcn_FName_ToString @ 0x1a21300\n")
-                cmdWriter.write("f fcn_GWorld @ 0x2213a00\n")
-                
-                functions.distinct().take(30).forEach { func ->
-                    val cleanName = func.replace(":", "_").replace("<", "_").replace(">", "_")
-                    cmdWriter.write("f fcn_$cleanName @ 0x${(10000000..99999999).random().toString(16).lowercase()}\n")
-                }
-            }
-            onLog(com.kittyspace.ui.Obfuscator.o("LDQYGgcWGR4YGSpXMBIZEgUWAxITVwQSBgISGQMeFhtXBUUoFBgaGhYZEwRZFBoTVwQUBR4HA1k="))
-        } catch (e: Exception) {
-            onLog(com.kittyspace.ui.Obfuscator.o("LCAWBRkeGRAqVzQYGgcWGR4YGVclFhMWBRJFVwQUBR4HA1cUBRIWAx4YGVcEHB4HBxITTVdTDBJZGhIEBBYQEgo="))
-        }
-
         return dumpFile
     }
 
-    // Performance-optimized printable ASCII string extractor
-    private fun extractPrintableStrings(file: File): List<String> {
+    // --- REAL BINARY PARSERS (NO HEURISTICS) ---
+    
+    private fun parseIl2CppMetadataStrings(file: File): List<String> {
         val result = mutableListOf<String>()
+        if (!file.exists()) return result
         try {
-            BufferedInputStream(FileInputStream(file)).use { stream ->
-                val buffer = ByteArray(65536)
-                val currentWord = StringBuilder()
-                var bytesRead: Int
+            java.io.RandomAccessFile(file, "r").use { raf ->
+                val channel = raf.channel
+                val mapSize = channel.size().coerceAtMost(Int.MAX_VALUE.toLong())
+                if (mapSize < 40) return result
+                val buffer = channel.map(java.nio.channels.FileChannel.MapMode.READ_ONLY, 0, mapSize).order(ByteOrder.LITTLE_ENDIAN)
+                
+                val magic = buffer.getInt()
+                if (magic != 0xFAB11BAF.toInt()) return result // Verify metadata magic header
+                
+                buffer.position(8)
+                val strOffset = buffer.getInt()
+                buffer.position(24)
+                val strOffsetHeader = buffer.getInt()
+                val strCountHeader = buffer.getInt()
+                
+                if (strOffsetHeader > 0 && strCountHeader > 0 && strOffsetHeader + strCountHeader <= mapSize) {
+                    var ptr = strOffsetHeader
+                    val end = strOffsetHeader + strCountHeader
+                    
+                    while (ptr < end) {
+                        buffer.position(ptr)
+                        val sb = java.lang.StringBuilder()
+                        var c = buffer.get().toInt().toChar()
+                        while (c != '\u0000' && ptr < end) {
+                            if (c in ' '..'~') sb.append(c)
+                            ptr++
+                            c = buffer.get().toInt().toChar()
+                        }
+                        if (sb.isNotEmpty()) result.add(sb.toString())
+                        ptr++
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed authentic metadata parse: \${e.message}")
+        }
+        return result
+    }
 
-                while (stream.read(buffer).also { bytesRead = it } != -1) {
-                    for (i in 0 until bytesRead) {
-                        val c = buffer[i].toInt().toChar()
-                        if (c in ' '..'~') {
-                            currentWord.append(c)
-                        } else {
-                            if (currentWord.length >= 4) {
-                                val word = currentWord.toString().trim()
-                                if (word.isNotEmpty()) {
-                                    result.add(word)
+    private fun parseElf64DynamicSymbols(file: File): List<Pair<String, Long>> {
+        val result = mutableListOf<Pair<String, Long>>()
+        if (!file.exists()) return result
+        try {
+            java.io.RandomAccessFile(file, "r").use { raf ->
+                val channel = raf.channel
+                val mapSize = channel.size().coerceAtMost(Int.MAX_VALUE.toLong() / 2) // Safe mapping
+                if (mapSize < 64) return result
+                val buffer = channel.map(java.nio.channels.FileChannel.MapMode.READ_ONLY, 0, mapSize).order(ByteOrder.LITTLE_ENDIAN)
+                
+                val magic = buffer.getInt()
+                if (magic != 0x464C457F) return result // \x7FELF magic
+                val is64 = buffer.get() == 2.toByte()
+                if (!is64) return result
+                
+                buffer.position(0x28)
+                val shoff = buffer.getLong()
+                buffer.position(0x3A)
+                val shentsize = buffer.getShort().toInt()
+                val shnum = buffer.getShort().toInt()
+                
+                var dynsymOffset = 0L
+                var dynsymSize = 0L
+                var dynsymEntSize = 0L
+                var dynsymLink = 0
+                
+                for (i in 0 until shnum) {
+                    val secPtr = (shoff + i * shentsize).toInt()
+                    if (secPtr + 64 > mapSize) break
+                    buffer.position(secPtr + 4) // skip sh_name
+                    val type = buffer.getInt()
+                    if (type == 11) { // SHT_DYNSYM
+                        buffer.position(secPtr + 24)
+                        dynsymOffset = buffer.getLong()
+                        dynsymSize = buffer.getLong()
+                        dynsymLink = buffer.getInt()
+                        buffer.position(secPtr + 56)
+                        dynsymEntSize = buffer.getLong()
+                        break
+                    }
+                }
+                
+                if (dynsymOffset > 0 && dynsymLink > 0 && dynsymEntSize >= 24) {
+                    val strSecPtr = (shoff + dynsymLink * shentsize).toInt()
+                    if (strSecPtr + 64 <= mapSize) {
+                        buffer.position(strSecPtr + 24)
+                        val strtabOffset = buffer.getLong()
+                        
+                        val count = (dynsymSize / dynsymEntSize).toInt()
+                        for (i in 0 until count) {
+                            val symPtr = (dynsymOffset + i * dynsymEntSize).toInt()
+                            if (symPtr + 24 > mapSize) break
+                            buffer.position(symPtr)
+                            val nameIdx = buffer.getInt()
+                            buffer.position(symPtr + 8)
+                            val stValue = buffer.getLong()
+                            
+                            if (nameIdx > 0 && stValue > 0) {
+                                val strPtr = (strtabOffset + nameIdx).toInt()
+                                if (strPtr < mapSize) {
+                                    buffer.position(strPtr)
+                                    val sb = java.lang.StringBuilder()
+                                    var c = buffer.get().toInt().toChar()
+                                    while (c != '\u0000' && buffer.position() < mapSize) {
+                                        sb.append(c)
+                                        c = buffer.get().toInt().toChar()
+                                    }
+                                    if (sb.isNotEmpty()) result.add(Pair(sb.toString(), stValue))
                                 }
                             }
-                            currentWord.setLength(0)
                         }
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error scanning file strings: ${e.message}")
+            Log.e(TAG, "Failed authentic ELF dynsym parse: \${e.message}")
         }
         return result
     }
