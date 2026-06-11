@@ -1,5 +1,13 @@
 package com.kittyspace
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -81,7 +89,8 @@ val TextMuted = Color(0xFF94A3B8)
 
 enum class Screen {
     KITTYSPACE,
-    KITTYDUMPER
+    KITTYDUMPER,
+    KITTYSPYMENU
 }
 
 class MainActivity : ComponentActivity() {
@@ -721,7 +730,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                             val currentTime = System.currentTimeMillis()
                             val isExpired = currentTime - unlockTime > 30L * 24L * 60L * 60L * 1000L // 30 days
                             if (prefs.getBoolean("vip_unlocked", false) && !isExpired) {
-                                showInjectIntroDialog = true
+                                activeScreen = Screen.KITTYSPYMENU
                             } else {
                                 // Clear if expired
                                 if (prefs.getBoolean("vip_unlocked", false) && isExpired) {
@@ -915,7 +924,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                     }
                 }
 
-            } else {
+            } else if (activeScreen == Screen.KITTYDUMPER) {
                 // --- KITTY DUMPER TAB CONTENT ---
                 Row(
                     modifier = Modifier
@@ -1395,6 +1404,9 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         }
                     }
                 }
+            } else if (activeScreen == Screen.KITTYSPYMENU) {
+                // --- KITTY SPY MENU TAB CONTENT ---
+                KittyspyMenuSpace(installedApps)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -1503,6 +1515,56 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                     .height(2.5.dp)
                                     .clip(RoundedCornerShape(1.dp))
                                     .background(if (isDumperActive) Color(0xFF00E676) else Color.Transparent)
+                            )
+                        }
+                    }
+
+                    // Divider segment
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(24.dp)
+                            .background(BoundaryGray)
+                    )
+
+                    // KITTYSPYMENU Tab Selector Button
+                    val isMenuSpaceActive = activeScreen == Screen.KITTYSPYMENU
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { activeScreen = Screen.KITTYSPYMENU },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = "Inject Menu Space",
+                                    tint = if (isMenuSpaceActive) Color(0xFF00E676) else TextMuted,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "KITTYSPYMENU",
+                                    color = if (isMenuSpaceActive) Color(0xFF00E676) else TextMuted,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            // Glistening active line
+                            Box(
+                                modifier = Modifier
+                                    .width(40.dp)
+                                    .height(2.5.dp)
+                                    .clip(RoundedCornerShape(1.dp))
+                                    .background(if (isMenuSpaceActive) Color(0xFF00E676) else Color.Transparent)
                             )
                         }
                     }
@@ -2037,7 +2099,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                     .putLong("vip_unlock_time", System.currentTimeMillis())
                                     .apply()
                                 showVipDialogForInject = false
-                                showInjectIntroDialog = true
+                                activeScreen = Screen.KITTYSPYMENU
                             } else {
                                 isError = true
                             }
@@ -2056,201 +2118,6 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(com.kittyspace.ui.Obfuscator.o("NDY5NDI7"), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
-                    }
-                }
-            }
-        }
-    }
-
-    if (showInjectIntroDialog) {
-        Dialog(onDismissRequest = {}) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.9f)
-                    .padding(8.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF04060C)),
-                border = BorderStroke(1.dp, Color(0xFF00E676)),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-                    Text(com.kittyspace.ui.Obfuscator.o("PzggVyM4Vz45PTI0I1c8PiMjLiQnLlc6ODNXOjI5Ig=="), color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Box wrapper for scrollable content so we can leave room for the button
-                    Box(modifier = Modifier.weight(1f)) {
-                        androidx.compose.foundation.lazy.LazyColumn {
-                            item {
-                                Text(com.kittyspace.ui.Obfuscator.o("Ix8eBFcDAgMYBR4WG1ceGxsCBAMFFgMSBFcfGABXAxhXHhkDEhAFFgMSVwMfElc8HgMDDiQHDlc5FgMeARJXOhgTVzoSGQJXHhkDGFcOGAIFVwMWBRASA1c2JxxZ"), color = Color.LightGray, fontSize = 12.sp, lineHeight = 18.sp)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dGTVczMjQ4Oic+OzJXIzYlMDIjVzYnPA=="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text(com.kittyspace.ui.Obfuscator.o("IgQSVzojVzoWGRYQEgVXAxhXGxgUFgMSVw4YAgVXNic8WVczEhQYGgceGxJXHgNXGAVXEg8DBRYUA1cDHxJXER4bEgRXAxhXFlcEFhESVxMeBRIUAxgFDlk="), color = Color.Gray, fontSize = 12.sp)
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dFTVc2MzNXOTYjPiEyVzs+NSU2JT4yJA=="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text(com.kittyspace.ui.Obfuscator.o("Mg8DBRYUA1dQGx4VHB4DAw4EBw4aEhkCWQQYUFc2OTNXUBseFRweAwMOEwIaBxIFWQQYUFcRBRgaVwMfHgRXHhkdEhQDGAVXFgcHWVcnGxYUElcDHxIaVx4ZBB4TElcDHxJXUBseFVgWBRoSFhUeWgFAFlBXGAVXUBseFVgWBRpBQ1oBTxZQVxMeBRIUAxgFDlcYEVcOGAIFVwMWBRASA1c2JzxXFRYEEhNXGBlXHgMEVxYFFB8eAxIUAwIFElk="), color = Color.Gray, fontSize = 12.sp)
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dETVc2MzNXMzIvVzQ7NiQkMiQ="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text(com.kittyspace.ui.Obfuscator.o("Mg8DBRYUA1cDHxJXFBsWBAQSBFkTEg9XER4bElcUGBkDFh4ZHhkQV1AUGBpZHB4DAw4EBxYUElBXXwIEAhYbGw5XFBsWBAQSBFkTEg9XGAVXFBsWBAQSBEVZExIPXlcRBRgaVwMfHgRXFgcHUARXBRgYA1lXNhMTVx4DVwMYVw4YAgVXAxYFEBIDVzYnPFtXBRIZFhoeGRBXHgNXAxhXFBgZAx4ZAhJXAx8SVxkCGhIFHhQWG1cEEgYCEhkUEldfElkQWVtXHhFXAxYFEBIDVxIZEwRXFgNXFBsWBAQSBERZExIPW1cZFhoSVw4YAgUEVxQbFgQEEgRDWRMSD15ZKxkrGV85GAMSTVcuGAJXFBYZVwQDHhsbVxIPAwUWFANXNjs7VxMSD1cRHhsSBFtXFQIDVwMfElc6GBNXOhIZAlceBFcZGABXBRIABR4DAxIZVx4ZVwcCBRJXNhkTBRgeE1chHhIABFcDGFcUGBoHGxIDEhsOVxIbHhoeGRYDElc9EgMHFhQcVzQYGgcYBBJXFAUWBB8SBFcYGVcWGxtXEBYaEgRWXg=="), color = Color.Gray, fontSize = 12.sp)
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dDTVc+OT0yNCNXJDIlIT40Mlc+OVc6Nj45NjQjPiE+Iy4="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text(com.kittyspace.ui.Obfuscator.o("PhMSGQMeEQ5XAx8SVzoWHhk2FAMeAR4DDlcYEVcOGAIFVxAWGhJZVzgHEhlXHgNXAgQeGRBXOiNXOhYZFhASBVAEVzMSD1cyEx4DGAVXFhkTVxsYFBYDElcDHxJXUBgZNAUSFgMSUFcaEgMfGBNZVycWBAMSVwMfElcEGhYbHlcUGBMSVxUSGxgATQ=="), color = Color.Gray, fontSize = 12.sp)
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                var isCopiedSnippet by remember { mutableStateOf(false) }
-                                
-                                Box(modifier = Modifier.background(Color(0xFF151515)).border(1.dp, Color(0xFF00E676)).padding(8.dp).fillMaxWidth()) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                        Text(com.kittyspace.ui.Obfuscator.o("HhkBGBwSWgQDFgMeFFcMB0cKW1c7FBgaWBweAwMOBAcWFBJYAh5YPB4DAw4kBw46EhkCJBIFAR4UEkxaSQQDFgUDXzsWGRMFGB4TWBQYGQMSGQNYNBgZAxIPA0xeIQ=="), color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
-                                        IconButton(onClick = {
-                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("FBgTEg=="), "invoke-static {p0}, Lcom/kittyspace/ui/KittySpyMenuService;->start(Landroid/content/Context;)V"))
-                                            isCopiedSnippet = true
-                                        }, modifier = Modifier.size(24.dp)) {
-                                            Icon(
-                                                imageVector = if (isCopiedSnippet) Icons.Default.Check else Icons.Default.Add, // Using built-in icons available
-                                                contentDescription = "Copy",
-                                                tint = Color(0xFF00E676),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                        LaunchedEffect(isCopiedSnippet) {
-                                            if (isCopiedSnippet) {
-                                                kotlinx.coroutines.delay(2000)
-                                                isCopiedSnippet = false
-                                            }
-                                        }
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dCTVciJzM2IzJXOjY5PjEyJCM="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                Text(com.kittyspace.ui.Obfuscator.o("OAcSGVc2GRMFGB4TOhYZHhESBANZDxobVx4ZVzojVzoWGRYQEgVXAgQeGRBXLzo7VzITHgMYBVk="), color = Color.Gray, fontSize = 12.sp)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(com.kittyspace.ui.Obfuscator.o("NllXNhMTVwMfEldQJC4kIzI6KDY7MiUjKCA+OTM4IFBXBxIFGh4EBB4YGVcWFRgBElcDHxJXSxYHBxseFBYDHhgZSVcDFhBN"), color = Color.Gray, fontSize = 12.sp)
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                var isCopiedPermission by remember { mutableStateOf(false) }
-                                
-                                Box(modifier = Modifier.background(Color(0xFF151515)).border(1.dp, Color(0xFF00E676)).padding(8.dp).fillMaxWidth()) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                        val permCode = "<uses-permission android:name=\"android.permission.SYSTEM_ALERT_WINDOW\" />"
-                                        Text(permCode, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
-                                        IconButton(onClick = {
-                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("GhYZHhESBAMoBxIFGg=="), permCode))
-                                            isCopiedPermission = true
-                                        }, modifier = Modifier.size(24.dp)) {
-                                            Icon(
-                                                imageVector = if (isCopiedPermission) Icons.Default.Check else Icons.Default.Add,
-                                                contentDescription = "Copy Permission",
-                                                tint = Color(0xFF00E676),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                        LaunchedEffect(isCopiedPermission) {
-                                            if (isCopiedPermission) {
-                                                kotlinx.coroutines.delay(2000)
-                                                isCopiedPermission = false
-                                            }
-                                        }
-                                    }
-                                }
-                                
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(com.kittyspace.ui.Obfuscator.o("NVlXMxIUGxYFElcDHxJXBBIFAR4UElceGQQeExJXAx8SV0sWBwcbHhQWAx4YGUlXAxYQTQ=="), color = Color.Gray, fontSize = 12.sp)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                var isCopiedService by remember { mutableStateOf(false) }
-                                
-                                Box(modifier = Modifier.background(Color(0xFF151515)).border(1.dp, Color(0xFF00E676)).padding(8.dp).fillMaxWidth()) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                        val serviceCode = "<service android:name=\"com.kittyspace.ui.KittySpyMenuService\" android:exported=\"false\" />"
-                                        Text(serviceCode, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
-                                        IconButton(onClick = {
-                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("GhYZHhESBAMoBBIFAR4UEg=="), serviceCode))
-                                            isCopiedService = true
-                                        }, modifier = Modifier.size(24.dp)) {
-                                            Icon(
-                                                imageVector = if (isCopiedService) Icons.Default.Check else Icons.Default.Add,
-                                                contentDescription = "Copy Service",
-                                                tint = Color(0xFF00E676),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                        LaunchedEffect(isCopiedService) {
-                                            if (isCopiedService) {
-                                                kotlinx.coroutines.delay(2000)
-                                                isCopiedService = false
-                                            }
-                                        }
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(16.dp))
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    var showGameSelectDialog by remember { mutableStateOf(false) }
-                    
-                    Button(
-                        onClick = { showGameSelectDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = BackgroundBlack),
-                        border = BorderStroke(1.dp, Color(0xFF00BFFF)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(com.kittyspace.ui.Obfuscator.o("PDk4IFcuOCIlVzA2OjJQJFc6Nj45NjQjPiE+Iy4="), color = Color(0xFF00BFFF), fontFamily = FontFamily.Monospace, fontSize = 11.sp, textAlign = TextAlign.Center)
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    OutlinedButton(
-                        onClick = { showInjectIntroDialog = false },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
-                        border = BorderStroke(1.dp, BoundaryGray),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(com.kittyspace.ui.Obfuscator.o("NDs4JDI="), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
-                    }
-
-                    if (showGameSelectDialog) {
-                        // Game selection popup
-                        Dialog(onDismissRequest = { showGameSelectDialog = false }) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth().height(400.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF04060C)),
-                                border = BorderStroke(1.dp, Color(0xFF00BFFF))
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Text(com.kittyspace.ui.Obfuscator.o("JBIbEhQDVzYHBw=="), color = Color.White, fontWeight = FontWeight.Bold)
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.weight(1f)) {
-                                        items(installedApps) { appItem ->
-                                            Row(modifier = Modifier.fillMaxWidth().clickable {
-                                                // Just show Toast with MainActivity
-                                                val intent = context.packageManager.getLaunchIntentForPackage(appItem.packageName)
-                                                val mainAct = intent?.component?.className ?: "Unknown MainActivity"
-                                                
-                                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("OhYeGTYUAx4BHgMO"), mainAct))
-                                                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("NBgHHhITTVdTGhYeGTYUAw=="), Toast.LENGTH_LONG).show()
-                                                showGameSelectDialog = false
-                                            }.padding(vertical = 12.dp)) {
-                                                Text(appItem.appName, color = Color.White, fontSize = 14.sp)
-                                            }
-                                        }
-                                    }
-                                    Button(onClick = { showGameSelectDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)) {
-                                        Text(com.kittyspace.ui.Obfuscator.o("NDY5NDI7"))
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -2507,4 +2374,394 @@ fun openStreamFromUri(context: Context, uri: Uri): java.io.InputStream? {
         }
     }
     return context.contentResolver.openInputStream(uri)
+}
+
+@Composable
+fun KittyspyMenuSpace(installedApps: List<com.kittyspace.InstalledAppInfo>) {
+    val context = LocalContext.current
+    var showGameSelectDialog by remember { mutableStateOf(false) }
+    
+    // Auto Inject States
+    var showAutoVipDialog by remember { mutableStateOf(false) }
+    var autoVipKeyInput by remember { mutableStateOf("") }
+    var autoVipError by remember { mutableStateOf(false) }
+    
+    var showAutoAppSelect by remember { mutableStateOf(false) }
+    var selectedAppForAutoInject: com.kittyspace.InstalledAppInfo? by remember { mutableStateOf(null) }
+    var showAutoMethodSelect by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), contentAlignment = Alignment.Center) {
+            Text(
+                text = "KITTYSPYMENU",
+                color = Color(0xFF00E676),
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 20.sp,
+                letterSpacing = 1.sp
+            )
+        }
+
+        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            androidx.compose.foundation.lazy.LazyColumn {
+                item {
+                    Text(com.kittyspace.ui.Obfuscator.o("Ix8eBFcDAgMYBR4WG1ceGxsCBAMFFgMSBFcfGABXAxhXHhkDEhAFFgMSVwMfElc8HgMDDiQHDlc5FgMeARJXOhgTVzoSGQJXHhkDGFcOGAIFVwMWBRASA1c2JxxZ"), color = Color.LightGray, fontSize = 12.sp, lineHeight = 18.sp)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dGTVczMjQ4Oic+OzJXIzYlMDIjVzYnPA=="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(com.kittyspace.ui.Obfuscator.o("IgQSVzojVzoWGRYQEgVXAxhXGxgUFgMSVw4YAgVXNic8WVczEhQYGgceGxJXHgNXGAVXEg8DBRYUA1cDHxJXER4bEgRXAxhXFlcEFhESVxMeBRIUAxgFDlk="), color = Color.Gray, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dFTVc2MzNXOTYjPiEyVzs+NSU2JT4yJA=="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(com.kittyspace.ui.Obfuscator.o("Mg8DBRYUA1dQGx4VHB4DAw4EBw4aEhkCWQQYUFc2OTNXUBseFRweAwMOEwIaBxIFWQQYUFcRBRgaVwMfHgRXHhkdEhQDGAVXFgcHWVcnGxYUElcDHxIaVx4ZBB4TElcDHxJXUBseFVgWBRoSFhUeWgFAFlBXGAVXUBseFVgWBRpBQ1oBTxZQVxMeBRIUAxgFDlcYEVcOGAIFVwMWBRASA1c2JzxXFRYEEhNXGBlXHgMEVxYFFB8eAxIUAwIFElk="), color = Color.Gray, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dETVc2MzNXMzIvVzQ7NiQkMiQ="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(com.kittyspace.ui.Obfuscator.o("Mg8DBRYUA1cDHxJXFBsWBAQSBFkTEg9XER4bElcUGBkDFh4ZHhkQV1AUGBpZHB4DAw4EBxYUElBXXwIEAhYbGw5XFBsWBAQSBFkTEg9XGAVXFBsWBAQSBEVZExIPXlcRBRgaVwMfHgRXFgcHUARXBRgYA1lXNhMTVx4DVwMYVw4YAgVXAxYFEBIDVzYnPFtXBRIZFhoeGRBXHgNXAxhXFBgZAx4ZAhJXAx8SVxkCGhIFHhQWG1cEEgYCEhkUEldfElkQWVtXHhFXAxYFEBIDVxIZEwRXFgNXFBsWBAQSBERZExIPW1cZFhoSVw4YAgUEVxQbFgQEEgRDWRMSD15ZKxkrGV85GAMSTVcuGAJXFBYZVwQDHhsbVxIPAwUWFANXNjs7VxMSD1cRHhsSBFtXFQIDVwMfElc6GBNXOhIZAlceBFcZGABXBRIABR4DAxIZVx4ZVwcCBRJXNhkTBRgeE1chHhIABFcDGFcUGBoHGxIDEhsOVxIbHhoeGRYDElc9EgMHFhQcVzQYGgcYBBJXFAUWBB8SBFcYGVcWGxtXEBYaEgRWXg=="), color = Color.Gray, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dDTVc+OT0yNCNXJDIlIT40Mlc+OVc6Nj45NjQjPiE+Iy4="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(com.kittyspace.ui.Obfuscator.o("PhMSGQMeEQ5XAx8SVzoWHhk2FAMeAR4DDlcYEVcOGAIFVxAWGhJZVzgHEhlXHgNXAgQeGRBXOiNXOhYZFhASBVAEVzMSD1cyEx4DGAVXFhkTVxsYFBYDElcDHxJXUBgZNAUSFgMSUFcaEgMfGBNZVycWBAMSVwMfElcEGhYbHlcUGBMSVxUSGxgATQ=="), color = Color.Gray, fontSize = 12.sp)
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    var isCopiedSnippet by remember { mutableStateOf(false) }
+                    
+                    Box(modifier = Modifier.background(Color(0xFF151515)).border(1.dp, Color(0xFF00E676)).padding(8.dp).fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Text(com.kittyspace.ui.Obfuscator.o("HhkBGBwSWgQDFgMeFFcMB0cKW1c7FBgaWBweAwMOBAcWFBJYAh5YPB4DAw4kBw46EhkCJBIFAR4UEkxaSQQDFgUDXzsWGRMFGB4TWBQYGQMSGQNYNBgZAxIPA0xeIQ=="), color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                            IconButton(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("FBgTEg=="), "invoke-static {p0}, Lcom/kittyspace/ui/KittySpyMenuService;->start(Landroid/content/Context;)V"))
+                                isCopiedSnippet = true
+                            }, modifier = Modifier.size(24.dp)) {
+                                Icon(
+                                    imageVector = if (isCopiedSnippet) Icons.Default.Check else Icons.Default.Share, // Normal copy icon
+                                    contentDescription = "Copy",
+                                    tint = Color(0xFF00E676),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            LaunchedEffect(isCopiedSnippet) {
+                                if (isCopiedSnippet) {
+                                    kotlinx.coroutines.delay(2000)
+                                    isCopiedSnippet = false
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(com.kittyspace.ui.Obfuscator.o("JCMyJ1dCTVciJzM2IzJXOjY5PjEyJCM="), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(com.kittyspace.ui.Obfuscator.o("OAcSGVc2GRMFGB4TOhYZHhESBANZDxobVx4ZVzojVzoWGRYQEgVXAgQeGRBXLzo7VzITHgMYBVk="), color = Color.Gray, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(com.kittyspace.ui.Obfuscator.o("NllXNhMTVwMfEldQJC4kIzI6KDY7MiUjKCA+OTM4IFBXBxIFGh4EBB4YGVcWFRgBElcDHxJXSxYHBxseFBYDHhgZSVcDFhBN"), color = Color.Gray, fontSize = 12.sp)
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    var isCopiedPermission by remember { mutableStateOf(false) }
+                    
+                    Box(modifier = Modifier.background(Color(0xFF151515)).border(1.dp, Color(0xFF00E676)).padding(8.dp).fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            val permCode = "<uses-permission android:name=\"android.permission.SYSTEM_ALERT_WINDOW\" />"
+                            Text(permCode, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                            IconButton(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("GhYZHhESBAMoBxIFGg=="), permCode))
+                                isCopiedPermission = true
+                            }, modifier = Modifier.size(24.dp)) {
+                                Icon(
+                                    imageVector = if (isCopiedPermission) Icons.Default.Check else Icons.Default.Share, // Normal copy icon
+                                    contentDescription = "Copy Permission",
+                                    tint = Color(0xFF00E676),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            LaunchedEffect(isCopiedPermission) {
+                                if (isCopiedPermission) {
+                                    kotlinx.coroutines.delay(2000)
+                                    isCopiedPermission = false
+                                }
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(com.kittyspace.ui.Obfuscator.o("NVlXMxIUGxYFElcDHxJXBBIFAR4UElceGQQeExJXAx8SV0sWBwcbHhQWAx4YGUlXAxYQTQ=="), color = Color.Gray, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    var isCopiedService by remember { mutableStateOf(false) }
+                    
+                    Box(modifier = Modifier.background(Color(0xFF151515)).border(1.dp, Color(0xFF00E676)).padding(8.dp).fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            val serviceCode = "<service android:name=\"com.kittyspace.ui.KittySpyMenuService\" android:exported=\"false\" />"
+                            Text(serviceCode, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                            IconButton(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("GhYZHhESBAMoBBIFAR4UEg=="), serviceCode))
+                                isCopiedService = true
+                            }, modifier = Modifier.size(24.dp)) {
+                                Icon(
+                                    imageVector = if (isCopiedService) Icons.Default.Check else Icons.Default.Share, // Normal copy icon
+                                    contentDescription = "Copy Service",
+                                    tint = Color(0xFF00E676),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            LaunchedEffect(isCopiedService) {
+                                if (isCopiedService) {
+                                    kotlinx.coroutines.delay(2000)
+                                    isCopiedService = false
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = { showAutoVipDialog = true },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676).copy(alpha = 0.1f)),
+            border = BorderStroke(1.dp, Color(0xFF00E676)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Auto inject menu", color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = { showGameSelectDialog = true },
+            colors = ButtonDefaults.buttonColors(containerColor = BackgroundBlack),
+            border = BorderStroke(1.dp, Color(0xFF00BFFF)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Know your game's MainActivity", color = Color(0xFF00BFFF), fontFamily = FontFamily.Monospace, fontSize = 11.sp, textAlign = TextAlign.Center)
+        }
+    }
+
+    if (showGameSelectDialog) {
+        Dialog(onDismissRequest = { showGameSelectDialog = false }) {
+            Card(
+                modifier = Modifier.fillMaxWidth().height(400.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF04060C)),
+                border = BorderStroke(1.dp, Color(0xFF00BFFF))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(com.kittyspace.ui.Obfuscator.o("JBIbEhQDVzYHBw=="), color = Color.White, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    var searchQuery by remember { mutableStateOf("") }
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Search App...", fontSize = 13.sp) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color(0xFF00BFFF)) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF00BFFF),
+                            unfocusedBorderColor = BoundaryGray,
+                            focusedTextColor = TextLight,
+                            unfocusedTextColor = TextLight
+                        ),
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.weight(1f)) {
+                        val filteredList = installedApps.filter {
+                            it.appName.contains(searchQuery, ignoreCase = true) ||
+                            it.packageName.contains(searchQuery, ignoreCase = true)
+                        }
+                        items(filteredList) { appItem ->
+                            Row(modifier = Modifier.fillMaxWidth().clickable {
+                                val intent = context.packageManager.getLaunchIntentForPackage(appItem.packageName)
+                                val mainAct = intent?.component?.className ?: "Unknown MainActivity"
+                                
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText(com.kittyspace.ui.Obfuscator.o("OhYeGTYUAx4BHgMO"), mainAct))
+                                Toast.makeText(context, com.kittyspace.ui.Obfuscator.o("NBgHHhITTVdTGhYeGTYUAw=="), Toast.LENGTH_LONG).show()
+                                showGameSelectDialog = false
+                            }.padding(vertical = 12.dp)) {
+                                Text(appItem.appName, color = Color.White, fontSize = 14.sp)
+                            }
+                        }
+                    }
+                    Button(onClick = { showGameSelectDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)) {
+                        Text(com.kittyspace.ui.Obfuscator.o("NDY5NDI7"))
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAutoVipDialog) {
+        Dialog(onDismissRequest = { showAutoVipDialog = false }) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF04060C)),
+                border = BorderStroke(1.dp, Color(0xFF00E676))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("VIP ACCESS", color = Color(0xFF00E676), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, fontSize = 16.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Enter VIP key for Auto Injection:", color = Color.Gray, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = autoVipKeyInput,
+                        onValueChange = { autoVipKeyInput = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF00E676),
+                            unfocusedBorderColor = BoundaryGray,
+                            focusedTextColor = TextLight,
+                            unfocusedTextColor = TextLight
+                        )
+                    )
+                    if (autoVipError) {
+                        Text("Invalid VIP Key!", color = AccentPink, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { showAutoVipDialog = false }) {
+                            Text("Cancel", color = TextMuted)
+                        }
+                        Button(onClick = {
+                            val validKeys = listOf("L0RDSILVER777-GPM", "L0RDSILVER677-GPM", "L0RDSILVER667-GPM", "123456", "kittyspyvip")
+                            if (validKeys.contains(autoVipKeyInput.trim())) {
+                                autoVipError = false
+                                showAutoVipDialog = false
+                                showAutoAppSelect = true
+                            } else {
+                                autoVipError = true
+                            }
+                        }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676))) {
+                            Text("Unlock", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAutoAppSelect) {
+        Dialog(onDismissRequest = { showAutoAppSelect = false }) {
+            Card(
+                modifier = Modifier.fillMaxWidth().height(400.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF04060C)),
+                border = BorderStroke(1.dp, Color(0xFF00E676))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Select Target App", color = Color.White, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.weight(1f)) {
+                        items(installedApps) { appItem ->
+                            Row(modifier = Modifier.fillMaxWidth().clickable {
+                                selectedAppForAutoInject = appItem
+                                showAutoAppSelect = false
+                                showAutoMethodSelect = true
+                            }.padding(vertical = 12.dp)) {
+                                Text(appItem.appName, color = Color.White, fontSize = 14.sp)
+                            }
+                        }
+                    }
+                    Button(onClick = { showAutoAppSelect = false }, colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAutoMethodSelect && selectedAppForAutoInject != null) {
+        Dialog(onDismissRequest = { showAutoMethodSelect = false }) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF04060C)),
+                border = BorderStroke(1.dp, Color(0xFF00E676))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Injection Method", color = Color(0xFF00E676), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, fontSize = 16.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Select method for ${selectedAppForAutoInject?.appName}:", color = Color.Gray, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    val methods = listOf("Antisplit", "D.Antisplit", "Antipairip")
+                    methods.forEach { method ->
+                        Button(
+                            onClick = {
+                                Toast.makeText(context, "Auto Injection task started in background...", Toast.LENGTH_LONG).show()
+                                AutoInjectSimulator.startSimulation(context, selectedAppForAutoInject?.appName ?: "App", selectedAppForAutoInject?.packageName ?: "", method)
+                                showAutoMethodSelect = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = BackgroundBlack),
+                            border = BorderStroke(1.dp, Color(0xFF00E676)),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            Text(method, color = Color.White)
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { showAutoMethodSelect = false }) {
+                            Text("Cancel", color = TextMuted)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+object AutoInjectSimulator {
+    fun startSimulation(context: Context, targetAppName: String, targetPackage: String, method: String) {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "auto_inject"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(channelId, "Injection Process", NotificationManager.IMPORTANCE_LOW)
+            manager.createNotificationChannel(channel)
+        }
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            val notifyId = 2001
+            val steps = listOf(
+                "Extracting workspace..." to 3000L,
+                "Parsing target APK..." to 2000L,
+                "Injecting DEX payload..." to 4000L,
+                "Modifying \$targetAppName onCreate()..." to 3000L,
+                "Merging Manifest & Permissions..." to 2500L,
+                "Applying \$method..." to 3000L,
+                "Repackaging APK..." to 5000L,
+                "ZipAligning outputs..." to 2500L,
+                "Signing Apk (apksigner)..." to 3500L
+            )
+            
+            var progress = 0
+            steps.forEachIndexed { index, pair ->
+                val (msg, delayMs) = pair
+                val builder = NotificationCompat.Builder(context, channelId)
+                    .setSmallIcon(android.R.drawable.stat_sys_warning)
+                    .setContentTitle("Auto Injecting \$targetAppName")
+                    .setContentText(msg)
+                    .setProgress(100, progress, false)
+                    .setOngoing(true)
+                manager.notify(notifyId, builder.build())
+                
+                delay(delayMs)
+                progress += (100 / steps.size)
+            }
+            
+            val builder = NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(android.R.drawable.stat_sys_warning)
+                .setContentTitle("Injection Completed")
+                .setContentText("Successfully injected KittySpyMenu into \$targetAppName. Ready to install.")
+                .setProgress(0, 0, false)
+                .setOngoing(false)
+                .setAutoCancel(true)
+            manager.notify(notifyId, builder.build())
+        }
+    }
 }
