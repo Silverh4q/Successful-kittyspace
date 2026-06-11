@@ -433,7 +433,7 @@ Java_com_kittyspace_NativeDumper_dumpGameFunctions(
                             const void* image = il2cpp_assembly_get_image(assemblies[i]);
                             if (image) {
                                 const char* imageName = il2cpp_image_get_name(image);
-                                if (imageName /* && std::string(imageName).find("Assembly-CSharp") != std::string::npos */) {
+                                if (imageName && std::string(imageName).find("Assembly-CSharp") != std::string::npos) {
                                     size_t classCount = il2cpp_image_get_class_count(image);
                                     for (size_t j = 0; j < classCount; ++j) {
                                         const void* klass = il2cpp_image_get_class(image, j);
@@ -477,9 +477,9 @@ Java_com_kittyspace_NativeDumper_dumpGameFunctions(
                             }
                         }
                         if (dumpedClasses == 0) {
-                            dumpedFunctions.push_back("[KittySpy] No application classes found, game might be obfuscated.");
+                            dumpedFunctions.push_back("[KittySpy] No Assembly-CSharp classes found, game might be obfuscated.");
                         } else {
-                            dumpedFunctions.push_back("[KittySpy] Dumped " + std::to_string(dumpedClasses) + " runtime classes across all assemblies.");
+                            dumpedFunctions.push_back("[KittySpy] Dumped " + std::to_string(dumpedClasses) + " runtime classes.");
                         }
                     }
                 }
