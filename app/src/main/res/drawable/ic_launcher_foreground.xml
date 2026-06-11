@@ -3,6 +3,6 @@
     <item
         android:width="66dp"
         android:height="66dp"
-        android:drawable="@drawable/ic_launcher_foreground_1780349051993"
+        android:drawable="@drawable/kittyspy_icon_logo_1781179898468"
         android:gravity="center" />
 </layer-list>

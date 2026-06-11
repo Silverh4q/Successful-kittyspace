@@ -1,6 +1,6 @@
 {
-  "name": "Secure Native App",
-  "description": "An application compiled with NDK and SDK, featuring ProGuard protection.",
+  "name": "KITTYSPY",
+  "description": "An advanced native Unity and Unreal Engine binary dumper via memory parsing and memory extraction.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
