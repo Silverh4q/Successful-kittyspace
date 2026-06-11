@@ -1035,7 +1035,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(selectedSpaceApp!!.appName.uppercase(), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, color = TextLight, fontSize = 12.sp)
-                                            Text(com.kittyspace.ui.Obfuscator.o("BxwQTVdTDAQSGxIUAxITJAcWFBI2BwdWVlkHFhQcFhASORYaEgo="), color = TextMuted, fontFamily = FontFamily.Monospace, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text("PKG: ${selectedSpaceApp!!.packageName}", color = TextMuted, fontFamily = FontFamily.Monospace, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         }
                                         Button(
                                             onClick = { viewModel.dumpUnityFromKittySpace(selectedSpaceApp!!) },
@@ -1196,7 +1196,7 @@ fun KittyDumperMainScreen(viewModel: KittyViewModel = viewModel()) {
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(selectedSpaceApp!!.appName.uppercase(), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, color = TextLight, fontSize = 12.sp)
-                                            Text(com.kittyspace.ui.Obfuscator.o("BxwQTVdTDAQSGxIUAxITJAcWFBI2BwdWVlkHFhQcFhASORYaEgo="), color = TextMuted, fontFamily = FontFamily.Monospace, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text("PKG: ${selectedSpaceApp!!.packageName}", color = TextMuted, fontFamily = FontFamily.Monospace, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         }
                                         Button(
                                             onClick = { viewModel.dumpUnrealFromKittySpace(selectedSpaceApp!!) },
