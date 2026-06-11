@@ -183,6 +183,7 @@ class KittyViewModel(application: Application) : AndroidViewModel(application) {
                     putExtra("META_PATH", metaFile.absolutePath)
                     putExtra("LIB_PATH", libFile.absolutePath)
                     putExtra("APP_NAME", "Manual Unity Files")
+                    putExtra("PACKAGE_NAME", "com.unknown.manual")
                 }
 
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -222,6 +223,7 @@ class KittyViewModel(application: Application) : AndroidViewModel(application) {
                     putExtra("DUMP_TYPE", "UNREAL_STORAGE")
                     putExtra("LIB_PATH", libFile.absolutePath)
                     putExtra("APP_NAME", "Manual Unreal Files")
+                    putExtra("PACKAGE_NAME", "com.unknown.manual")
                 }
 
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {

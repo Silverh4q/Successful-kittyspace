@@ -116,10 +116,10 @@ class KittyDumpService : Service() {
                             performUnrealSpaceDump(appName, packageName, sourceDir)
                         }
                         "UNITY_STORAGE" -> {
-                            performUnityStorageDump(metaPath, libPath)
+                            performUnityStorageDump(metaPath, libPath, packageName)
                         }
                         "UNREAL_STORAGE" -> {
-                            performUnrealStorageDump(libPath)
+                            performUnrealStorageDump(libPath, packageName)
                         }
                         else -> {
                             updateStatusFailed("Unknown dump operation specified")
@@ -254,7 +254,7 @@ class KittyDumpService : Service() {
         updateStatusSuccess(dumpFile, "$appName Unreal dump completed successfully!")
     }
 
-    private suspend fun performUnityStorageDump(metaPath: String, libPath: String) {
+    private suspend fun performUnityStorageDump(metaPath: String, libPath: String, packageName: String) {
         KittyDumpManager.addLog("[System] Initiating local files storage loader for Unity...")
         
         val metaFile = File(metaPath)
@@ -282,17 +282,17 @@ class KittyDumpService : Service() {
 
         updateNotificationProgress("Dumping Symbols...", "Generating authentic C# structural classes...")
         val documentsDir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: filesDir
-        val outDir = File(documentsDir, "KittyDumper/Unity/StorageManual")
+        val outDir = File(documentsDir, "KittyDumper/Unity/$packageName")
         outDir.mkdirs()
 
-        val dumpResult = KittyDumperEngine.dumpUnity(libFile, metaFile, outDir, "Manual_Extracted_Target") { logLine ->
+        val dumpResult = KittyDumperEngine.dumpUnity(libFile, metaFile, outDir, packageName) { logLine ->
             KittyDumpManager.addLog(logLine)
         }
 
         updateStatusSuccess(dumpResult, "Manual Unity dump completed successfully!")
     }
 
-    private suspend fun performUnrealStorageDump(libPath: String) {
+    private suspend fun performUnrealStorageDump(libPath: String, packageName: String) {
         KittyDumpManager.addLog("[System] Initiating local files storage loader for Unreal libUE4.so...")
 
         val libFile = File(libPath)
@@ -314,10 +314,10 @@ class KittyDumpService : Service() {
         KittyDumpManager.addLog("[Term] Executing backend shell command: Kittydumper && mv libUE4.so /sdcard/unreal")
 
         val documentsDir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: filesDir
-        val outDir = File(documentsDir, "KittyDumper/Unreal/StorageManual")
+        val outDir = File(documentsDir, "KittyDumper/Unreal/$packageName")
         outDir.mkdirs()
 
-        val dumpResult = KittyDumperEngine.dumpUnreal(libFile, outDir, "Manual_Extracted_Target") { logLine ->
+        val dumpResult = KittyDumperEngine.dumpUnreal(libFile, outDir, packageName) { logLine ->
             KittyDumpManager.addLog(logLine)
         }
 
