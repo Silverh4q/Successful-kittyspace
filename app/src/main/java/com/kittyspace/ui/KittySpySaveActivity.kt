@@ -22,9 +22,9 @@ class KittySpySaveActivity : Activity() {
             dir.mkdirs()
             val file = java.io.File(dir, fileName)
             file.writeText(dataToSave)
-            Toast.makeText(this, "Script saved to Documents/KittyDumper/ManualSaves/$fileName", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, com.kittyspace.ui.Obfuscator.o("JBYBEhNXBAIUFBIEBBECGxsOVwMYVzMYFAIaEhkDBFg8HgMDDjMCGgcSBVg6FhkCFhskFgESBFhTER4bEjkWGhI="), Toast.LENGTH_LONG).show()
         } catch(e: Exception) {
-            Toast.makeText(this, "Failed to save file. Check permissions.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, com.kittyspace.ui.Obfuscator.o("JBYBElcRFh4bEhNNV1MMElkaEgQEFhASCg=="), Toast.LENGTH_LONG).show()
         }
         dataToSave = ""
         finish()
